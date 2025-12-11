@@ -1,6 +1,4 @@
-#ifndef C620_CAN_HPP
-#define C620_CAN_HPP
-
+#pragma once
 #include "can.h"
 
 class C620CAN
@@ -34,5 +32,3 @@ extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     c620.readMotorStatus();
 }
 */
-
-#endif // C620_CAN_HPP
