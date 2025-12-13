@@ -4,6 +4,7 @@ RedBuriの開発用リポジトリです。
 ## stm32 (nucleo_f446re)
 libディレクトリにlib/run/run.hppを作成してください。
 
+'''cpp
 #pragma once
 
 namespace run
