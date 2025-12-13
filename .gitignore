@@ -7,3 +7,4 @@ ros2_ws/log/
 # STM32 / PlatformIO
 stm32/nucleo_f446re/.pio/
 stm32/nucleo_f446re/.vscode/
+stm32/nucleo_f446re/lib/runs/
