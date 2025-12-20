@@ -1,8 +1,8 @@
 # RedBuri
-RedBuriの開発用リポジトリです。
+RedBuriの開発用リポジトリです．
 
-## stm32 (nucleo_f446re)
-libディレクトリにlib/run/run.hppを作成してください。
+## stm32/nucleo_f446re
+`stm32/nucleo_f446re/lib/run/run.hpp`を作成してください．
 
 ```cpp
 #pragma once
