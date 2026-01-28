@@ -3,12 +3,13 @@
 #include <termios.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <cstdint>
 #include <string>
 
 class Serial
 {
 public:
-    Serial();
+    Serial(const std::string &port, int baud);
     ~Serial();
     bool isReady() const;
     bool writeSerial(const std::string &msg);

@@ -1,21 +1,37 @@
 #include "serial_bridge/serial.hpp"
 
-Serial::Serial()
+namespace {
+speed_t baudToFlag(int baud)
 {
-    const char* SERIAL_PORT = "/dev/serial/by-id/usb-STMicroelectronics_STM32_STLink_0670FFB38315939314036931-if02";
-    fd_ = open(SERIAL_PORT, O_RDWR | O_NOCTTY);
+    switch (baud) {
+        case 9600: return B9600;
+        case 19200: return B19200;
+        case 38400: return B38400;
+        case 57600: return B57600;
+        case 115200: return B115200;
+        case 230400: return B230400;
+        default: return 0;
+    }
+}
+}
+
+Serial::Serial(const std::string &port, int baud)
+{
+    const speed_t baud_flag = baudToFlag(baud);
+    if(baud_flag == 0) return;
+
+    fd_ = open(port.c_str(), O_RDWR | O_NOCTTY);
     if(fd_ < 0) return;
 
     struct termios tio{};
-    const speed_t BAUD_RATE = B115200;
     if(tcgetattr(fd_, &tio) < 0) return;
 
     cfmakeraw(&tio);
     tio.c_cflag |= (CLOCAL | CREAD);
     tio.c_cc[VMIN] = 1;
     tio.c_cc[VTIME] = 0;
-    if(cfsetispeed(&tio, BAUD_RATE) < 0) return;
-    if(cfsetospeed(&tio, BAUD_RATE) < 0) return;
+    if(cfsetispeed(&tio, baud_flag) < 0) return;
+    if(cfsetospeed(&tio, baud_flag) < 0) return;
 
     tcflush(fd_, TCIOFLUSH);
     if(tcsetattr(fd_, TCSANOW, &tio) < 0) return;
