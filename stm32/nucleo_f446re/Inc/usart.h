@@ -44,8 +44,6 @@ void MX_USART1_UART_Init(void);
 void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-// Start UART interrupt-driven receive (1 byte) for USART2
-void UART_StartRxIT(void);
 
 /* USER CODE END Prototypes */
 
