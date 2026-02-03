@@ -1,5 +1,5 @@
 #pragma once
-#include "can.h"
+#include <cstdint>
 
 constexpr float LIMIT_CURRENT_AMP = 6.0f;       // ユーザー定義の電流制限[A]
 constexpr float MAX_CURRENT_AMP = 20.0f;        // 最大電流[A]

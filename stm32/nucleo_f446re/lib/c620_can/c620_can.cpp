@@ -1,4 +1,5 @@
 #include "c620_can.hpp"
+#include "can.h"
 #include <cmath>
 
 void C620CAN::init()

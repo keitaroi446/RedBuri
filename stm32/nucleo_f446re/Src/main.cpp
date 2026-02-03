@@ -26,7 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include "run.hpp"
 #include "c620_can.hpp"
-#include <stdio.h>
+#include <cstdio>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
