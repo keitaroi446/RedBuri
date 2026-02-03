@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include "run.hpp"
 #include "c620_can.hpp"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,7 +69,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  setbuf(stdout, NULL);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -156,6 +157,12 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+extern "C" int _write(int file, char *ptr, int len)
+{
+  HAL_UART_Transmit(&huart2,(uint8_t *)ptr,len,HAL_MAX_DELAY);
+  return len;
+}
+
 extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     c620.readMotorStatus();
