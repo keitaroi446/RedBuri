@@ -77,7 +77,6 @@ void C620CAN::readMotorStatus()
 
     if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK)
     {
-        ++rx_count_;
         if(rx_header.StdId < 0x201 || rx_header.StdId > 0x208) return;
         const uint8_t idx = rx_header.StdId - 0x201;
 
@@ -110,9 +109,4 @@ float C620CAN::getTemp(uint8_t motor_id)
 {
     if(motor_id == 0 || motor_id > 8) return -1.0f;
     return temps_degc[motor_id - 1];
-}
-
-uint32_t C620CAN::getRxCount() const
-{
-    return rx_count_;
 }

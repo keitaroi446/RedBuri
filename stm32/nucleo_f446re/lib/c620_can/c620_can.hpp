@@ -24,9 +24,7 @@ private:
     uint16_t angles_raw[8];
     int16_t speeds_rpm[8];
     int16_t currents_raw[8];
-    uint8_t temps_degc[8];
-    volatile uint32_t rx_count_{0};
-    
+    uint8_t temps_degc[8];    
 };
 
 /*
