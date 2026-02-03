@@ -5,6 +5,7 @@ class C620CAN
 {
 public:
     C620CAN();
+    void init();
     void setCurrent(uint8_t motor_id, float current_amp);
     void sendCurrents();
     void readMotorStatus();
@@ -12,6 +13,7 @@ public:
     float getSpeed(uint8_t motor_id);
     float getCurrent(uint8_t motor_id);
     float getTemp(uint8_t motor_id);
+    uint32_t getRxCount() const;
 
 private:
     int16_t target_currents_raw[8];
@@ -19,6 +21,7 @@ private:
     int16_t speeds_rpm[8];
     int16_t currents_raw[8];
     uint8_t temps_degc[8];
+    volatile uint32_t rx_count_{0};
     
 };
 
