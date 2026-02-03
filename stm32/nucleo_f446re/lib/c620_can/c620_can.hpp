@@ -1,6 +1,11 @@
 #pragma once
 #include "can.h"
 
+constexpr float LIMIT_CURRENT_AMP = 6.0f;       // ユーザー定義の電流制限[A]
+constexpr float MAX_CURRENT_AMP = 20.0f;        // 最大電流[A]
+constexpr int16_t MAX_CURRENT_RAW = 16384;      // 最大電流(16bit)
+constexpr uint16_t MAX_ANGLE_RAW = 8191;        // 最大角度(16bit)
+
 class C620CAN
 {
 public:
