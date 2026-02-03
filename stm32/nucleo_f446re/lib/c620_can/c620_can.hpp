@@ -4,7 +4,6 @@
 class C620CAN
 {
 public:
-    C620CAN();
     void init();
     void setCurrent(uint8_t motor_id, float current_amp);
     void sendCurrents();

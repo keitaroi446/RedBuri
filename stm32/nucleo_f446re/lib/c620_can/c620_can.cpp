@@ -1,15 +1,6 @@
 #include "c620_can.hpp"
 #include <cmath>
 
-C620CAN::C620CAN() 
-: target_currents_raw{0},
-  angles_raw{0},
-  speeds_rpm{0},
-  currents_raw{0},
-  temps_degc{0}
-{
-}
-
 void C620CAN::init()
 {
     // C620のCAN_ID: 0x201~0x208
