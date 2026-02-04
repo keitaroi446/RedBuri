@@ -20,11 +20,11 @@ public:
     uint32_t getRxCount() const;
 
 private:
-    int16_t target_currents_raw[8];
-    uint16_t angles_raw[8];
-    int16_t speeds_rpm[8];
-    int16_t currents_raw[8];
-    uint8_t temps_degc[8];    
+    int16_t target_currents_raw[8] = {};
+    uint16_t angles_raw[8] = {};
+    int16_t speeds_rpm[8] = {};
+    int16_t currents_raw[8] = {};
+    uint8_t temps_degc[8] = {};    
 };
 
 /*
