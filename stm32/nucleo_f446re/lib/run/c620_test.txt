@@ -1,7 +1,6 @@
 #pragma once
 
 #include "c620_can.hpp"
-#include "main.h"
 #include <cstdio>
 
 extern C620CAN c620;
