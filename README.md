@@ -10,6 +10,8 @@ RedBuriの開発用リポジトリです．
 - `setup_c()` : 初期化処理
 - `loop_c()`  : メインループ処理
 
+`Src/user_run.cpp` に以下を記述してください。
+
 ```cpp
 namespace run 
 {
