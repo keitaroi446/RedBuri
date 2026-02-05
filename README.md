@@ -2,7 +2,7 @@
 RedBuriの開発用リポジトリです．
 
 ## STM32
-STM32 NUCLEO-F446REのmain.cppにおいて，マージコンフリクトを防ぐため以下のファイルを作成してください．
+STM32 NUCLEO-F446REのmain.cにおいて，マージコンフリクトを防ぐため以下のファイルを作成してください．
 
 `stm32/nucleo_f446re/Src/user_run.cpp`
 
