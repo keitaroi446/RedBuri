@@ -27,14 +27,3 @@ private:
     int16_t currents_raw[8] = {};
     uint8_t temps_degc[8] = {};    
 };
-
-/*
-コールバック関数をmain.cppに書く
-
-C620CAN c620;
-
-extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-    c620.readMotorStatus();
-}
-*/
