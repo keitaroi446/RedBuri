@@ -7,9 +7,6 @@ STM32 NUCLEO-F446REのmain.cppにおいて，マージコンフリクトを防�
 `stm32/nucleo_f446re/Src/user_run.cpp`
 
 ```cpp
-#include "main.h"
-#include <cstdio>
-
 namespace run 
 {
     void setup()
