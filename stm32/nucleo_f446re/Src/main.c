@@ -25,7 +25,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "run_c.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -53,7 +52,8 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void setup_c(void);
+void loop_c(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
