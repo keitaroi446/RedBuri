@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "run.hpp"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -94,7 +95,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
-
+  setup_c();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -102,7 +103,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+    loop_c();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
