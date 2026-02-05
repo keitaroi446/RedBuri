@@ -1,16 +1,12 @@
 #include "tim.h"
-#include "gpio.h"
+#include "c620_control.hpp"
 
-static volatile uint16_t div = 0;
+extern C620Control c620_control;
 
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim->Instance == TIM6)
+    if (htim == &htim6)
     {
-        if (++div >= 500)
-        {
-            div = 0;
-            HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-        }
+        c620_control.update();
     }
 }

@@ -1,7 +1,7 @@
 #include "c620_control.hpp"
 
-C620Control::C620Control(C620CAN& can)
-    : can(can)
+C620Control::C620Control(C620CAN& c620_can)
+    : can(c620_can)
 {
 }
 
@@ -19,9 +19,9 @@ void C620Control::update()
         const float target_rpm = target_speed_rpm[idx];
         const float error = target_rpm - actual_rpm;
 
-        speed_i[idx] += error * DT_SEC;
+        speed[idx] += error * DT_SEC;
 
-        const float current_cmd = KP_SPEED * error + KI_SPEED * speed_i[idx];
+        const float current_cmd = KP_SPEED * error + KI_SPEED * speed[idx];
         can.setCurrent(id, current_cmd);
     }
 
