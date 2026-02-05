@@ -17,5 +17,5 @@ private:
     
     C620CAN& can;
     float target_speed_rpm[8] = {};
-    float speed[8] = {};
+    float speed_i[8] = {};
 };

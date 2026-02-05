@@ -3,6 +3,11 @@
 C620Control::C620Control(C620CAN& c620_can)
     : can(c620_can)
 {
+    for (uint8_t i = 0; i < 8; ++i)
+    {
+        target_speed_rpm[i] = 0.0f;
+        speed_i[i] = 0.0f;
+    }
 }
 
 void C620Control::setSpeedTarget(uint8_t motor_id, float target_rpm)
@@ -19,9 +24,9 @@ void C620Control::update()
         const float target_rpm = target_speed_rpm[idx];
         const float error = target_rpm - actual_rpm;
 
-        speed[idx] += error * DT_SEC;
+        speed_i[idx] += error * DT_SEC;
 
-        const float current_cmd = KP_SPEED * error + KI_SPEED * speed[idx];
+        const float current_cmd = KP_SPEED * error + KI_SPEED * speed_i[idx];
         can.setCurrent(id, current_cmd);
     }
 
