@@ -10,10 +10,8 @@ void C620Control::setSpeedTarget(uint8_t motor_id, float target_rpm)
     target_speed_rpm[motor_id - 1] = target_rpm;
 }
 
-void C620Control::update(float dt_sec)
+void C620Control::update()
 {
-    if (dt_sec <= 0.0f) return;
-
     for (uint8_t id = 1; id <= 8; ++id)
     {
         const uint8_t idx = id - 1;
@@ -21,7 +19,7 @@ void C620Control::update(float dt_sec)
         const float target_rpm = target_speed_rpm[idx];
         const float error = target_rpm - actual_rpm;
 
-        speed_i[idx] += error * dt_sec;
+        speed_i[idx] += error * DT_SEC;
 
         const float current_cmd = KP_SPEED * error + KI_SPEED * speed_i[idx];
         can.setCurrent(id, current_cmd);
