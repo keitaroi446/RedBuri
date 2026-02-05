@@ -1,11 +1,11 @@
 # RedBuri
 RedBuriの開発用リポジトリです．
 
-## STM32/NUCLEO_F446RE
+## STM32 / NUCLEO_F446RE
 
-実際の処理は`Src/main.c`ではなく`Src/user_run.cpp`に書きます。
+実際の処理は `Src/main.c` ではなく `Src/user_run.cpp` に書きます。
 
-`main.c` の`USER CODE`から以下を呼び出します。
+`main.c` の `USER CODE` から以下を呼び出します。
 
 - `setup_c()` : 初期化処理
 - `loop_c()`  : メインループ処理
