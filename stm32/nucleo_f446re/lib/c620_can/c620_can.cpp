@@ -91,13 +91,13 @@ void C620CAN::readMotorStatus()
 float C620CAN::getAngle(uint8_t motor_id)
 {
     if(motor_id == 0 || motor_id > 8) return -1.0f;
-    return 360.0f * angles_raw[motor_id - 1] / MAX_ANGLE_RAW;   // モーター角度範囲は0~360°
+    return 360.0f * angles_raw[motor_id - 1] / MAX_ANGLE_RAW;
 }
 
 float C620CAN::getSpeed(uint8_t motor_id)
 {
     if(motor_id == 0 || motor_id > 8) return -1.0f;
-    return speeds_rpm[motor_id - 1] / GEAR_RATIO;
+    return speeds_rpm[motor_id - 1];
 }
 
 float C620CAN::getCurrent(uint8_t motor_id)
