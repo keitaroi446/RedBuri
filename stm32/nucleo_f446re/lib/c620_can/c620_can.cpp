@@ -97,7 +97,7 @@ float C620CAN::getAngle(uint8_t motor_id)
 float C620CAN::getSpeed(uint8_t motor_id)
 {
     if(motor_id == 0 || motor_id > 8) return -1.0f;
-    return speeds_rpm[motor_id - 1];
+    return speeds_rpm[motor_id - 1] / GEAR_RATIO;
 }
 
 float C620CAN::getCurrent(uint8_t motor_id)

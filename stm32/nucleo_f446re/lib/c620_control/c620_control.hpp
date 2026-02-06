@@ -11,8 +11,7 @@ public:
     void update();
 
 private:
-    static constexpr float KP_SPEED = 0.01f;
-    static constexpr float KI_SPEED = 0.0f;
+    static constexpr float KP_SPEED = 0.6f;
     static constexpr float DT_SEC = 0.001f;
     
     C620CAN& can;
