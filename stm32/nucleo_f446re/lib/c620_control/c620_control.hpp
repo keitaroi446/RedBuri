@@ -15,9 +15,9 @@ public:
 private:
     static constexpr float GEAR_RATIO = 3591.0f / 187.0f;   // 減速比
     static constexpr float KP_SPEED = 0.03f;
-    static constexpr float KP_POS = 2.0f;                  // 位置Pゲイン[ rpm/deg ]
-    static constexpr float POS_TOL_DEG = 1.0f;             // 位置到達判定[deg]
-    static constexpr float MAX_TARGET_RPM = 100.0f;        // 速度指令上限[rpm]
+    static constexpr float KP_POS = 1.0f;                   // 位置Pゲイン[ rpm/deg ]
+    static constexpr float POS_TOL_DEG = 1.0f;              // 位置到達判定[deg]
+    static constexpr float MAX_TARGET_RPM = 100.0f;         // 速度指令上限[rpm]
     static constexpr float DT_SEC = 0.001f;
     
     C620CAN& can;
