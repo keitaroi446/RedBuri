@@ -124,7 +124,6 @@ void C620Control::rotate(uint8_t motor_id, float delta_deg)
     const uint8_t idx = motor_id - 1;
     if (!angle_inited[idx])
     {
-        // 次のupdateで初期化されるのでここでは何もしない
         return;
     }
 
