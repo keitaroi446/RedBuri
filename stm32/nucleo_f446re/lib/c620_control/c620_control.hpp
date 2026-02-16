@@ -18,7 +18,7 @@ private:
     static constexpr float PLANETARY_GEAR_RATIO = 1.5f;             // 遊星ギヤ減速比
     static constexpr float KP_SPEED = 0.03f;
     static constexpr float KP_POS = 1.0f;                           // 位置Pゲイン[ rpm/deg
-    static constexpr float KP_HOLD = 20.0f;
+    static constexpr float KP_HOLD = 10.0f;
     static constexpr float POS_TOL_DEG = 1.0f;                      // 位置到達判定[deg]
     static constexpr float MAX_TARGET_RPM = 100.0f;                 // 速度指令上限[rpm]
     static constexpr float DT_SEC = 0.001f;
