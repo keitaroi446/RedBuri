@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2025 STMicroelectronics.
+  * Copyright (c) 2026 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -19,14 +19,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "can.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "run.hpp"
-#include "c620_can.hpp"
-#include <cstdio>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,13 +46,14 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-C620CAN c620;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void setup_c(void);
+void loop_c(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -93,17 +93,18 @@ int main(void)
   MX_CAN1_Init();
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
-  c620.init();
-  run::setup();
+  setup_c();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    loop_c();
     /* USER CODE END WHILE */
-    run::loop();
+    
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -157,15 +158,10 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-extern "C" int _write(int file, char *ptr, int len)
+int _write(int file, char *ptr, int len)
 {
   HAL_UART_Transmit(&huart2,(uint8_t *)ptr,len,HAL_MAX_DELAY);
   return len;
-}
-
-extern "C" void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-    c620.readMotorStatus();
 }
 /* USER CODE END 4 */
 

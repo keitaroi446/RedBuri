@@ -1,23 +1,38 @@
 # RedBuri
 RedBuriの開発用リポジトリです．
 
-## STM32
-STM32 NUCLEO-F446REのmain.cppにおいて，マージコンフリクトを防ぐため以下の実行ヘッダーファイルを作成してください．
+## STM32 / NUCLEO_F446RE
 
-`stm32/nucleo_f446re/lib/run/run.hpp`
+実際の処理は `Src/main.c` ではなく `Src/user_run.cpp` に書きます。
+
+`main.c` の `USER CODE` から以下を呼び出します。
+
+- `setup_c()` : 初期化処理
+- `loop_c()`  : メインループ処理
+
+`Src/user_run.cpp` に以下を記述してください。
 
 ```cpp
-#pragma once
-
-namespace run
+namespace run 
 {
-    inline void setup()
+    void setup()
     {
-        // 初期化
-    }
 
-    inline void loop()
+    }
+    
+    void loop()
     {
-        // メインループ
+
     }
 }
+
+extern "C" void setup_c()
+{
+    run::setup();
+}
+
+extern "C" void loop_c()
+{
+    run::loop();
+}
+```
