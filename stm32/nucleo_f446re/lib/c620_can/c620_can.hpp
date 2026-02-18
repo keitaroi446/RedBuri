@@ -13,7 +13,6 @@ public:
     float getSpeed(uint8_t motor_id);
     float getCurrent(uint8_t motor_id);
     float getTemp(uint8_t motor_id);
-    uint32_t getRxCount() const;
 
 private:
     static constexpr float LIMIT_CURRENT_AMP = 6.0f;        // ユーザー定義の電流制限[A]
