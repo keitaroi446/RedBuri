@@ -2,20 +2,7 @@
 
 C620Control::C620Control(C620CAN& c620_can)
     : can(c620_can)
-{
-    for (uint8_t i = 0; i < 8; ++i)
-    {
-        target_speed_rpm[i] = 0.0f;
-        speed_i[i] = 0.0f;
-        prev_angle_deg[i] = 0.0f;
-        multi_angle_deg[i] = 0.0f;
-        angle_inited[i] = false;
-        target_pos_deg[i] = 0.0f;
-        position_mode[i] = false;
-        hold_pos_deg[i] = 0.0f;
-        hold_mode[i] = false;
-    }
-}
+{}
 
 void C620Control::setSpeedTarget(uint8_t motor_id, float target_rpm)
 {
@@ -63,7 +50,6 @@ void C620Control::update()
 
             if (error_deg > -POS_TOL_DEG && error_deg < POS_TOL_DEG)
             {
-                // 目標到達後は保持へ。切り替え時の段差を減らすためKP_HOLDで継続制御
                 position_mode[idx] = false;
                 hold_pos_deg[idx] = target_pos_deg[idx];
                 hold_mode[idx] = true;
@@ -76,7 +62,6 @@ void C620Control::update()
             }
             else
             {
-                // 位置P → 速度指令（出力軸rpm）
                 float target_out_rpm = KP_POS * error_deg;
                 if (target_out_rpm > MAX_TARGET_RPM) target_out_rpm = MAX_TARGET_RPM;
                 if (target_out_rpm < -MAX_TARGET_RPM) target_out_rpm = -MAX_TARGET_RPM;
@@ -97,12 +82,10 @@ void C620Control::update()
         }
         else if (target_speed_rpm[idx] != 0.0f)
         {
-            // 速度指令があるときは速度制御を優先
             target_rpm = target_speed_rpm[idx];
         }
         else
         {
-            // 速度指令が無いときは現在位置を保持
             const float current_out_deg = multi_angle_deg[idx] / MOTOR_GEAR_RATIO;
             hold_pos_deg[idx] = current_out_deg;
             hold_mode[idx] = true;
