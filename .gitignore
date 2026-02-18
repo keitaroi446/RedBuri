@@ -1,10 +1,10 @@
+.vscode/
+
 # ROS2
-ros2_ws/.vscode/
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 
 # STM32 / PlatformIO
 stm32/nucleo_f446re/.pio/
-stm32/nucleo_f446re/.vscode/
 stm32/nucleo_f446re/Src/user_run.cpp
