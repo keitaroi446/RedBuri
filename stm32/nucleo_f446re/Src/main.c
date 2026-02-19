@@ -104,7 +104,7 @@ int main(void)
   {
     loop_c();
     /* USER CODE END WHILE */
-    
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
