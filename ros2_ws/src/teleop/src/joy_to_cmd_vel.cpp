@@ -1,5 +1,7 @@
-#include <memory>
+#include <algorithm>
+#include <cmath>
 #include <functional>
+#include <memory>
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -9,23 +11,78 @@ class JoyToCmdVel : public rclcpp::Node
 public:
   JoyToCmdVel() : Node("joy_to_cmd_vel")
   {
+    base_enable_button_ = declare_parameter<int>("base_enable_button");
+    axis_linear_ = declare_parameter<int>("axis_linear");
+    axis_angular_turn_ = declare_parameter<int>("axis_angular_turn");
+    axis_angular_rot_ = declare_parameter<int>("axis_angular_rot");
+    scale_linear_ = declare_parameter<double>("scale_linear");
+    scale_angular_turn_ = declare_parameter<double>("scale_angular_turn");
+    scale_angular_rot_ = declare_parameter<double>("scale_angular_rot");
+    deadzone_linear_ = declare_parameter<double>("deadzone_linear");
+    deadzone_angular_turn_ = declare_parameter<double>("deadzone_angular_turn");
+    deadzone_angular_rot_ = declare_parameter<double>("deadzone_angular_rot");
+
     joy_sub_ = create_subscription<sensor_msgs::msg::Joy>("/joy", 10,
-      std::bind(&JoyToCmdVel::onJoy, this, std::placeholders::_1));
+      std::bind(&JoyToCmdVel::joyCallback, this, std::placeholders::_1));
     cmd_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
   }
 
 private:
+    int base_enable_button_{};
+    int axis_linear_{};
+    int axis_angular_turn_{};
+    int axis_angular_rot_{};
+    double scale_linear_{};
+    double scale_angular_turn_{};
+    double scale_angular_rot_{};
+    double deadzone_linear_{};
+    double deadzone_angular_turn_{};
+    double deadzone_angular_rot_{};
+
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
 
-    void onJoy(const sensor_msgs::msg::Joy::SharedPtr msg)
+    void joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
     {
       geometry_msgs::msg::Twist cmd;
 
-      if (msg->buttons.size() > 5 && msg->buttons[5] == 1)
+      if(msg->buttons.size() > static_cast<size_t>(base_enable_button_) &&
+         msg->buttons[base_enable_button_] == 1)
       {
-        if (msg->axes.size() > 1) cmd.linear.x = msg->axes[1] * 0.6;
-        if (msg->axes.size() > 0) cmd.angular.z = msg->axes[0] * 1.0;
+        double lin = 0.0;
+        double ang_turn = 0.0;
+        double ang_rot = 0.0;
+
+        const size_t max_idx = static_cast<size_t>(
+          std::max({axis_linear_, axis_angular_turn_, axis_angular_rot_}));
+
+        if(msg->axes.size() <= max_idx)
+        {
+          cmd_pub_->publish(geometry_msgs::msg::Twist());
+          return;
+        }
+
+        lin = msg->axes[axis_linear_];
+        ang_turn = msg->axes[axis_angular_turn_];
+        ang_rot = msg->axes[axis_angular_rot_];
+
+        if(std::fabs(ang_rot) > deadzone_angular_rot_)
+        {
+          cmd.linear.x = 0.0;
+          cmd.angular.z = ang_rot * scale_angular_rot_;
+        }
+        else
+        {
+          if(std::fabs(lin) > deadzone_linear_)
+          {
+            cmd.linear.x = lin * scale_linear_;
+          }
+
+          if(std::fabs(ang_turn) > deadzone_angular_turn_)
+          {
+            cmd.angular.z = ang_turn * scale_angular_turn_;
+          }
+        }
       }
 
       cmd_pub_->publish(cmd);
