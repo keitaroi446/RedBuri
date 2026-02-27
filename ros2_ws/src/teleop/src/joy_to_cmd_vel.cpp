@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cmath>
-#include <functional>
 #include <memory>
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
@@ -22,8 +21,14 @@ public:
     deadzone_angular_turn_ = declare_parameter<double>("deadzone_angular_turn");
     deadzone_angular_rot_ = declare_parameter<double>("deadzone_angular_rot");
 
-    joy_sub_ = create_subscription<sensor_msgs::msg::Joy>("/joy", 10,
-      std::bind(&JoyToCmdVel::joyCallback, this, std::placeholders::_1));
+    joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
+      "/joy",
+      10,
+      [this](sensor_msgs::msg::Joy::SharedPtr msg)
+      {
+        joyCallback(msg);
+      }
+    );
     cmd_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
   }
 
@@ -76,11 +81,11 @@ private:
           if(std::fabs(lin) > deadzone_linear_)
           {
             cmd.linear.x = lin * scale_linear_;
-          }
-
-          if(std::fabs(ang_turn) > deadzone_angular_turn_)
-          {
-            cmd.angular.z = ang_turn * scale_angular_turn_;
+            if(std::fabs(ang_turn) > deadzone_angular_turn_)
+            {
+              cmd.angular.z = ang_turn * scale_angular_turn_;
+              if(lin < 0.0) cmd.angular.z *= -1.0;
+            }
           }
         }
       }
