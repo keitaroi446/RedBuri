@@ -1,3 +1,4 @@
+# Controller: DualShock 4
 joy_to_cmd_vel:
   ros__parameters:
     base_enable_button: 5
