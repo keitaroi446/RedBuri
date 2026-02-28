@@ -5,6 +5,10 @@ joy_to_base_cmd:
     axis_backward: 2
     axis_steer: 0
     axis_spin: 3
+    forward_input_max: 0.9
+    backward_input_max: 0.9
+    steer_input_max: 0.9
+    spin_input_max: 0.9
     deadzone_forward: 0.1
     deadzone_backward: 0.1
     deadzone_steer: 0.1

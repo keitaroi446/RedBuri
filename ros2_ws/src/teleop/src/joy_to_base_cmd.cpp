@@ -14,6 +14,10 @@ public:
     axis_backward_ = declare_parameter<int>("axis_backward");
     axis_steer_ = declare_parameter<int>("axis_steer");
     axis_spin_ = declare_parameter<int>("axis_spin");
+    forward_input_max_ = declare_parameter<double>("forward_input_max");
+    backward_input_max_ = declare_parameter<double>("backward_input_max");
+    steer_input_max_ = declare_parameter<double>("steer_input_max");
+    spin_input_max_ = declare_parameter<double>("spin_input_max");
     deadzone_forward_ = declare_parameter<double>("deadzone_forward");
     deadzone_backward_ = declare_parameter<double>("deadzone_backward");
     deadzone_steer_ = declare_parameter<double>("deadzone_steer");
@@ -35,6 +39,10 @@ private:
   int axis_backward_{};
   int axis_steer_{};
   int axis_spin_{};
+  double forward_input_max_{};
+  double backward_input_max_{};
+  double steer_input_max_{};
+  double spin_input_max_{};
   double deadzone_forward_{};
   double deadzone_backward_{};
   double deadzone_steer_{};
@@ -61,16 +69,22 @@ private:
       return;
     }
 
-    forward = (1.0 - msg->axes[axis_forward_]) / 2.0;
-    backward = (1.0 - msg->axes[axis_backward_]) / 2.0;
-    steer = msg->axes[axis_steer_];
-    spin = msg->axes[axis_spin_];
+    forward = (1.0 - msg->axes[axis_forward_]) / (2.0 * forward_input_max_);
+    backward = (1.0 - msg->axes[axis_backward_]) / (2.0 * backward_input_max_);
+    steer = msg->axes[axis_steer_] / steer_input_max_;
+    spin = msg->axes[axis_spin_] / spin_input_max_;
 
-    if(std::fabs(forward) > deadzone_forward_)
+    forward = std::clamp(forward, 0.0, 1.0);
+    backward = std::clamp(backward, 0.0, 1.0);
+    steer = std::clamp(steer, -1.0, 1.0);
+    spin = std::clamp(spin, -1.0, 1.0);
+
+    if(forward > deadzone_forward_)
     {
       drive += forward;
     }
-    if(std::fabs(backward) > deadzone_backward_)
+    
+    if(backward > deadzone_backward_)
     {
       drive -= backward;
     }
