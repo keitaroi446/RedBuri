@@ -10,11 +10,11 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(redburi_msgs REQUIRED)
 
-add_executable(base_vel_to_motor src/base_vel_to_motor.cpp)
-ament_target_dependencies(base_vel_to_motor rclcpp redburi_msgs)
+add_executable(base_cmd_to_motor src/base_cmd_to_motor.cpp)
+ament_target_dependencies(base_cmd_to_motor rclcpp redburi_msgs)
 
 install(TARGETS
-  base_vel_to_motor
+  base_cmd_to_motor
   DESTINATION lib/${PROJECT_NAME}
 )
 

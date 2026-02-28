@@ -1,3 +1,0 @@
-float32 linear
-float32 angular_turn
-float32 angular_rot

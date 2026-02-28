@@ -1,13 +1,15 @@
 # Controller: DualShock 4
-joy_to_base_vel:
+joy_to_base_cmd:
   ros__parameters:
-    base_enable_button: 5
-    axis_linear: 1
-    axis_angular_turn: 0
-    axis_angular_rot: 3
-    scale_linear: 0.1
-    scale_angular_turn: 0.1
-    scale_angular_rot: 0.1
-    deadzone_linear: 0.1
-    deadzone_angular_turn: 0.1
-    deadzone_angular_rot: 0.2
+    axis_forward: 5
+    axis_backward: 2
+    axis_steer: 0
+    axis_spin: 3
+    scale_forward: 0.1
+    scale_backward: 0.1
+    scale_steer: 1.0
+    scale_spin: 0.1
+    deadzone_forward: 0.1
+    deadzone_backward: 0.1
+    deadzone_steer: 0.1
+    deadzone_spin: 0.2

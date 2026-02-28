@@ -11,11 +11,11 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(redburi_msgs REQUIRED)
 
-add_executable(joy_to_base_vel src/joy_to_base_vel.cpp)
-ament_target_dependencies(joy_to_base_vel rclcpp sensor_msgs redburi_msgs)
+add_executable(joy_to_base_cmd src/joy_to_base_cmd.cpp)
+ament_target_dependencies(joy_to_base_cmd rclcpp sensor_msgs redburi_msgs)
 
 install(TARGETS
-  joy_to_base_vel
+  joy_to_base_cmd
   DESTINATION lib/${PROJECT_NAME}
 )
 
