@@ -8,13 +8,13 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(geometry_msgs REQUIRED)
+find_package(redburi_msgs REQUIRED)
 
-add_executable(cmd_vel_to_motor src/cmd_vel_to_motor.cpp)
-ament_target_dependencies(cmd_vel_to_motor rclcpp geometry_msgs)
+add_executable(base_vel_to_motor src/base_vel_to_motor.cpp)
+ament_target_dependencies(base_vel_to_motor rclcpp redburi_msgs)
 
 install(TARGETS
-  cmd_vel_to_motor
+  base_vel_to_motor
   DESTINATION lib/${PROJECT_NAME}
 )
 
