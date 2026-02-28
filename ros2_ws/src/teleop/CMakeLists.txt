@@ -9,13 +9,13 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
+find_package(redburi_msgs REQUIRED)
 
-add_executable(joy_to_cmd_vel src/joy_to_cmd_vel.cpp)
-ament_target_dependencies(joy_to_cmd_vel rclcpp sensor_msgs geometry_msgs)
+add_executable(joy_to_base_vel src/joy_to_base_vel.cpp)
+ament_target_dependencies(joy_to_base_vel rclcpp sensor_msgs redburi_msgs)
 
 install(TARGETS
-  joy_to_cmd_vel
+  joy_to_base_vel
   DESTINATION lib/${PROJECT_NAME}
 )
 

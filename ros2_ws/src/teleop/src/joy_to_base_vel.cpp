@@ -3,12 +3,12 @@
 #include <memory>
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
-#include "geometry_msgs/msg/twist.hpp"
+#include "redburi_msgs/msg/base_vel.hpp"
 
 class JoyToCmdVel : public rclcpp::Node
 {
 public:
-  JoyToCmdVel() : Node("joy_to_cmd_vel")
+  JoyToCmdVel() : Node("joy_to_base_vel")
   {
     base_enable_button_ = declare_parameter<int>("base_enable_button");
     axis_linear_ = declare_parameter<int>("axis_linear");
@@ -29,7 +29,7 @@ public:
         joyCallback(msg);
       }
     );
-    cmd_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+    cmd_pub_ = create_publisher<redburi_msgs::msg::BaseVel>("/base_vel", 10);
   }
 
 private:
@@ -45,11 +45,11 @@ private:
     double deadzone_angular_rot_{};
 
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
+    rclcpp::Publisher<redburi_msgs::msg::BaseVel>::SharedPtr cmd_pub_;
 
     void joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
     {
-      geometry_msgs::msg::Twist cmd;
+      redburi_msgs::msg::BaseVel base;
 
       if(msg->buttons.size() > static_cast<size_t>(base_enable_button_) &&
          msg->buttons[base_enable_button_] == 1)
@@ -63,7 +63,7 @@ private:
 
         if(msg->axes.size() <= max_idx)
         {
-          cmd_pub_->publish(geometry_msgs::msg::Twist());
+          cmd_pub_->publish(redburi_msgs::msg::BaseVel());
           return;
         }
 
@@ -73,24 +73,24 @@ private:
 
         if(std::fabs(ang_rot) > deadzone_angular_rot_)
         {
-          cmd.linear.x = 0.0;
-          cmd.angular.z = ang_rot * scale_angular_rot_;
+          base.linear = 0.0;
+          base.angular_rot = ang_rot * scale_angular_rot_;
         }
         else
         {
           if(std::fabs(lin) > deadzone_linear_)
           {
-            cmd.linear.x = lin * scale_linear_;
+            base.linear = lin * scale_linear_;
             if(std::fabs(ang_turn) > deadzone_angular_turn_)
             {
-              cmd.angular.z = ang_turn * scale_angular_turn_;
-              if(lin < 0.0) cmd.angular.z *= -1.0;
+              base.angular_turn = ang_turn * scale_angular_turn_;
+              if(lin < 0.0) base.angular_turn *= -1.0;
             }
           }
         }
       }
 
-      cmd_pub_->publish(cmd);
+      cmd_pub_->publish(base);
     }
 };
 
