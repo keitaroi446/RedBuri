@@ -1,5 +1,5 @@
 # Controller: DualShock 4
-joy_to_cmd_vel:
+joy_to_base_vel:
   ros__parameters:
     base_enable_button: 5
     axis_linear: 1
