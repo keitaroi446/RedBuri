@@ -5,10 +5,6 @@ joy_to_base_cmd:
     axis_backward: 2
     axis_steer: 0
     axis_spin: 3
-    scale_forward: 0.1
-    scale_backward: 0.1
-    scale_steer: 1.0
-    scale_spin: 0.1
     deadzone_forward: 0.1
     deadzone_backward: 0.1
     deadzone_steer: 0.1

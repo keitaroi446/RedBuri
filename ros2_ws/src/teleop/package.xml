@@ -3,7 +3,7 @@
 <package format="3">
   <name>teleop</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Teleoperation nodes for manual robot control.</description>
   <maintainer email="149392536+keitaroi446@users.noreply.github.com">keitaro</maintainer>
   <license>TODO: License declaration</license>
 

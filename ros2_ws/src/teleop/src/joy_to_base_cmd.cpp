@@ -14,10 +14,6 @@ public:
     axis_backward_ = declare_parameter<int>("axis_backward");
     axis_steer_ = declare_parameter<int>("axis_steer");
     axis_spin_ = declare_parameter<int>("axis_spin");
-    scale_forward_ = declare_parameter<double>("scale_forward");
-    scale_backward_ = declare_parameter<double>("scale_backward");
-    scale_steer_ = declare_parameter<double>("scale_steer");
-    scale_spin_ = declare_parameter<double>("scale_spin");
     deadzone_forward_ = declare_parameter<double>("deadzone_forward");
     deadzone_backward_ = declare_parameter<double>("deadzone_backward");
     deadzone_steer_ = declare_parameter<double>("deadzone_steer");
@@ -39,10 +35,6 @@ private:
   int axis_backward_{};
   int axis_steer_{};
   int axis_spin_{};
-  double scale_forward_{};
-  double scale_backward_{};
-  double scale_steer_{};
-  double scale_spin_{};
   double deadzone_forward_{};
   double deadzone_backward_{};
   double deadzone_steer_{};
@@ -76,27 +68,27 @@ private:
 
     if(std::fabs(forward) > deadzone_forward_)
     {
-      drive += forward * scale_forward_;
+      drive += forward;
     }
     if(std::fabs(backward) > deadzone_backward_)
     {
-      drive -= backward * scale_backward_;
+      drive -= backward;
     }
 
     if(std::fabs(spin) > deadzone_spin_)
     {
-      base.spin = spin * scale_spin_;
+      base.spin = spin;
     }
     else
     {
-      if(std::fabs(drive) > 0.0)
+      if(drive != 0.0)
       {
         base.drive = drive;
       }
 
       if(std::fabs(steer) > deadzone_steer_)
       {
-        base.steer = steer * scale_steer_;
+        base.steer = steer;
       }
     }
     

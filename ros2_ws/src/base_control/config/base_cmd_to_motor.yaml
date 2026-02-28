@@ -1,0 +1,7 @@
+base_cmd_to_motor:
+  ros__parameters:
+    wheelbase_m: 0.930535
+    tread_m: 0.675026
+    max_spin_rpm: 30.0
+    max_motor_rpm: 60.0
+    max_steer_deg: 45.0
