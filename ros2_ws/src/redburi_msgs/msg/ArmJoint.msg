@@ -1,0 +1,7 @@
+float32 joint_1_rpm
+float32 joint_2_rpm
+float32 joint_3_rpm
+float32 joint_4_rpm
+float32 joint_5_rpm
+float32 joint_6_rpm
+float32 gripper_rpm

@@ -21,11 +21,11 @@ void C620Control::setPositionTarget(uint8_t motor_id, float target_deg)
 
 void C620Control::update()
 {
-    for (uint8_t id = 1; id <= 8; ++id)
+    for(uint8_t id = 1; id <= 8; ++id)
     {
         const uint8_t idx = id - 1;
         const float angle = can.getAngle(id);
-        if (!angle_inited[idx])
+        if(!angle_inited[idx])
         {
             prev_angle_deg[idx] = angle;
             multi_angle_deg[idx] = angle;
@@ -43,28 +43,28 @@ void C620Control::update()
         const float actual_rpm = can.getSpeed(id);
         float target_rpm = target_speed_rpm[idx];
 
-        if (position_mode[idx])
+        if(position_mode[idx])
         {
             const float current_out_deg = multi_angle_deg[idx] / MOTOR_GEAR_RATIO;
             const float error_deg = target_pos_deg[idx] - current_out_deg;
 
-            if (error_deg > -POS_TOL_DEG && error_deg < POS_TOL_DEG)
+            if(error_deg > -POS_TOL_DEG && error_deg < POS_TOL_DEG)
             {
                 position_mode[idx] = false;
                 hold_pos_deg[idx] = target_pos_deg[idx];
                 hold_mode[idx] = true;
 
                 float target_out_rpm = KP_HOLD * error_deg;
-                if (target_out_rpm > MAX_TARGET_RPM) target_out_rpm = MAX_TARGET_RPM;
-                if (target_out_rpm < -MAX_TARGET_RPM) target_out_rpm = -MAX_TARGET_RPM;
+                if(target_out_rpm > MAX_TARGET_RPM) target_out_rpm = MAX_TARGET_RPM;
+                if(target_out_rpm < -MAX_TARGET_RPM) target_out_rpm = -MAX_TARGET_RPM;
                 target_rpm = target_out_rpm * MOTOR_GEAR_RATIO;
                 target_speed_rpm[idx] = target_rpm;
             }
             else
             {
                 float target_out_rpm = KP_POS * error_deg;
-                if (target_out_rpm > MAX_TARGET_RPM) target_out_rpm = MAX_TARGET_RPM;
-                if (target_out_rpm < -MAX_TARGET_RPM) target_out_rpm = -MAX_TARGET_RPM;
+                if(target_out_rpm > MAX_TARGET_RPM) target_out_rpm = MAX_TARGET_RPM;
+                if(target_out_rpm < -MAX_TARGET_RPM) target_out_rpm = -MAX_TARGET_RPM;
 
                 target_rpm = target_out_rpm * MOTOR_GEAR_RATIO;
                 target_speed_rpm[idx] = target_rpm;
@@ -75,12 +75,12 @@ void C620Control::update()
             const float current_out_deg = multi_angle_deg[idx] / MOTOR_GEAR_RATIO;
             const float error_deg = hold_pos_deg[idx] - current_out_deg;
             float target_out_rpm = KP_HOLD * error_deg;
-            if (target_out_rpm > MAX_TARGET_RPM) target_out_rpm = MAX_TARGET_RPM;
-            if (target_out_rpm < -MAX_TARGET_RPM) target_out_rpm = -MAX_TARGET_RPM;
+            if(target_out_rpm > MAX_TARGET_RPM) target_out_rpm = MAX_TARGET_RPM;
+            if(target_out_rpm < -MAX_TARGET_RPM) target_out_rpm = -MAX_TARGET_RPM;
             target_rpm = target_out_rpm * MOTOR_GEAR_RATIO;
             target_speed_rpm[idx] = target_rpm;
         }
-        else if (target_speed_rpm[idx] != 0.0f)
+        else if(target_speed_rpm[idx] != 0.0f)
         {
             target_rpm = target_speed_rpm[idx];
         }
@@ -103,9 +103,9 @@ void C620Control::update()
 
 void C620Control::rotate(uint8_t motor_id, float delta_deg)
 {
-    if (motor_id == 0 || motor_id > 8) return;
+    if(motor_id == 0 || motor_id > 8) return;
     const uint8_t idx = motor_id - 1;
-    if (!angle_inited[idx])
+    if(!angle_inited[idx])
     {
         return;
     }
@@ -116,9 +116,9 @@ void C620Control::rotate(uint8_t motor_id, float delta_deg)
 
 void C620Control::holdPosition(uint8_t motor_id)
 {
-    if (motor_id == 0 || motor_id > 8) return;
+    if(motor_id == 0 || motor_id > 8) return;
     const uint8_t idx = motor_id - 1;
-    if (!angle_inited[idx])
+    if(!angle_inited[idx])
     {
         return;
     }

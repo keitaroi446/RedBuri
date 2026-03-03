@@ -63,7 +63,7 @@ void C620CAN::sendCurrents()
         for (int i = 0; i < 4; i++)
         {
             int16_t current = target_currents_raw[i + 4];
-            tx_data[2*i]     = (current >> 8) & 0xFF;
+            tx_data[2*i] = (current >> 8) & 0xFF;
             tx_data[2*i + 1] = current & 0xFF;
         }
 
@@ -76,15 +76,15 @@ void C620CAN::readMotorStatus()
     CAN_RxHeaderTypeDef rx_header;
     uint8_t rx_data[8];
 
-    if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK)
+    if(HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK)
     {
         if(rx_header.StdId < 0x201 || rx_header.StdId > 0x208) return;
         const uint8_t idx = rx_header.StdId - 0x201;
 
-        angles_raw[idx]   = static_cast<uint16_t>(rx_data[0] << 8 | rx_data[1]);
-        speeds_rpm[idx]   = static_cast<int16_t>(rx_data[2] << 8 | rx_data[3]);
+        angles_raw[idx] = static_cast<uint16_t>(rx_data[0] << 8 | rx_data[1]);
+        speeds_rpm[idx] = static_cast<int16_t>(rx_data[2] << 8 | rx_data[3]);
         currents_raw[idx] = static_cast<int16_t>(rx_data[4] << 8 | rx_data[5]);
-        temps_degc[idx]    = rx_data[6];
+        temps_degc[idx] = rx_data[6];
     }
 }
 

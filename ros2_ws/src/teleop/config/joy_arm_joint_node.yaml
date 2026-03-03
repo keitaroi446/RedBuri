@@ -1,0 +1,6 @@
+# Controller: DualShock 4
+joy_arm_joint_node:
+  ros__parameters:
+    deadzone_drive: 0.1
+    drive_input_max: 0.9
+    max_motor_rpm: 10.0
