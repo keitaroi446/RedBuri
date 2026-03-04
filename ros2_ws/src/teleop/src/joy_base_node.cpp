@@ -57,6 +57,23 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
   rclcpp::Publisher<redburi_msgs::msg::BaseMotor>::SharedPtr base_pub_;
 
+  double scaleAxis(double input, double input_max, double deadzone, double max_output) const
+  {
+    if(input_max == 0.0)
+    {
+      return 0.0;
+    }
+
+    double normalized = std::clamp(input / input_max, -1.0, 1.0);
+
+    if(std::fabs(normalized) < deadzone)
+    {
+      return 0.0;
+    }
+
+    return normalized * max_output;
+  }
+
   void joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
     redburi_msgs::msg::BaseMotor base;
@@ -75,35 +92,28 @@ private:
       return;
     }
 
-    forward = (1.0 - msg->axes[axis_forward_]) / (2.0 * forward_input_max_);
-    backward = (1.0 - msg->axes[axis_backward_]) / (2.0 * backward_input_max_);
-    steer = msg->axes[axis_steer_] / steer_input_max_;
-    spin = msg->axes[axis_spin_] / spin_input_max_;
+    forward = scaleAxis(
+      (1.0 - msg->axes[axis_forward_]) / 2.0,
+      forward_input_max_,
+      deadzone_forward_,
+      1.0);
+    backward = scaleAxis(
+      (1.0 - msg->axes[axis_backward_]) / 2.0,
+      backward_input_max_,
+      deadzone_backward_,
+      1.0);
+    steer = scaleAxis(
+      msg->axes[axis_steer_],
+      steer_input_max_,
+      deadzone_steer_,
+      1.0);
+    spin = scaleAxis(
+      msg->axes[axis_spin_],
+      spin_input_max_,
+      deadzone_spin_,
+      1.0);
 
-    forward = std::clamp(forward, 0.0, 1.0);
-    backward = std::clamp(backward, 0.0, 1.0);
-    steer = std::clamp(steer, -1.0, 1.0);
-    spin = std::clamp(spin, -1.0, 1.0);
-
-    if(forward > deadzone_forward_)
-    {
-      drive += forward;
-    }
-    
-    if(backward > deadzone_backward_)
-    {
-      drive -= backward;
-    }
-
-    if(std::fabs(steer) <= deadzone_steer_)
-    {
-      steer = 0.0;
-    }
-    
-    if(std::fabs(spin) <= deadzone_spin_)
-    {
-      spin = 0.0;
-    }
+    drive = forward - backward;
 
     if(spin != 0)
     {
