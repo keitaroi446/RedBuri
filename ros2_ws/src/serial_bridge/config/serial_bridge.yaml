@@ -1,0 +1,5 @@
+serial_bridge_node:
+  ros__parameters:
+    port: "/dev/ttyUSB0"
+    tx_rate_hz: 60.0
+    command_timeout_sec: 0.2
