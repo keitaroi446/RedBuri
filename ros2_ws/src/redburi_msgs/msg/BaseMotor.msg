@@ -1,4 +1,0 @@
-float32 steer_deg
-float32 motor_f_rpm
-float32 motor_r_rpm
-float32 motor_l_rpm

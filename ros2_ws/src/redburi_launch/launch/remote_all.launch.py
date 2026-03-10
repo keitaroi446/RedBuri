@@ -16,6 +16,9 @@ def generate_launch_description():
     servo_only_launch = PathJoinSubstitution(
         [launch_share, "launch", "servo_only.launch.py"]
     )
+    serial_only_launch = PathJoinSubstitution(
+        [launch_share, "launch", "serial_only.launch.py"]
+    )
 
     return LaunchDescription(
         [
@@ -27,6 +30,9 @@ def generate_launch_description():
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(teleop_only_launch)
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(serial_only_launch)
             ),
         ]
     )

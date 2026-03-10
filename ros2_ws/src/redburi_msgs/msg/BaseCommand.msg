@@ -1,0 +1,2 @@
+float32 motor_rpm
+float32 target_steer_deg

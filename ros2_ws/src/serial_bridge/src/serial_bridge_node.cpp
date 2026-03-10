@@ -2,16 +2,20 @@
 #include <cerrno>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <sstream>
 #include <string>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
-
+#include <vector>
 #include "rclcpp/rclcpp.hpp"
 #include "redburi_msgs/msg/arm_motor.hpp"
-#include "redburi_msgs/msg/base_motor.hpp"
+#include "redburi_msgs/msg/base_command.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 class SerialBridgeNode : public rclcpp::Node
 {
@@ -22,10 +26,10 @@ public:
     tx_rate_hz_ = declare_parameter<double>("tx_rate_hz", 50.0);
     command_timeout_sec_ = declare_parameter<double>("command_timeout_sec", 0.2);
 
-    base_sub_ = create_subscription<redburi_msgs::msg::BaseMotor>(
-      "/base_motor",
+    base_sub_ = create_subscription<redburi_msgs::msg::BaseCommand>(
+      "/base_cmd",
       10,
-      [this](const redburi_msgs::msg::BaseMotor::SharedPtr msg)
+      [this](const redburi_msgs::msg::BaseCommand::SharedPtr msg)
       {
         latest_base_ = *msg;
         has_base_ = true;
@@ -41,6 +45,9 @@ public:
         has_arm_ = true;
         last_arm_time_ = now();
       });
+
+    joint_state_pub_ = create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
+    steer_state_pub_ = create_publisher<std_msgs::msg::Float32>("/steer_state", 10);
 
     openSerial();
 
@@ -69,23 +76,68 @@ private:
 
   bool has_base_{false};
   bool has_arm_{false};
-  redburi_msgs::msg::BaseMotor latest_base_{};
+  redburi_msgs::msg::BaseCommand latest_base_{};
   redburi_msgs::msg::ArmMotor latest_arm_{};
   rclcpp::Time last_base_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_arm_time_{0, 0, RCL_ROS_TIME};
 
-  rclcpp::Subscription<redburi_msgs::msg::BaseMotor>::SharedPtr base_sub_;
+  rclcpp::Subscription<redburi_msgs::msg::BaseCommand>::SharedPtr base_sub_;
   rclcpp::Subscription<redburi_msgs::msg::ArmMotor>::SharedPtr arm_sub_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr steer_state_pub_;
   rclcpp::TimerBase::SharedPtr tx_timer_;
+  std::string rx_line_buffer_{};
+  const std::vector<std::string> joint_names_{
+    "joint_1",
+    "joint_2",
+    "joint_3",
+    "joint_4",
+    "joint_5",
+    "joint_6",
+    "gripper_joint"};
 
   static float safeFloat(float v)
   {
     return std::isfinite(v) ? v : 0.0f;
   }
 
+  static bool parseCsvFloats(
+    const std::string & line, char head, size_t expected_count, std::vector<float> & out_values)
+  {
+    if (line.size() < 3 || line[0] != head || line[1] != ',') {
+      return false;
+    }
+
+    out_values.clear();
+    out_values.reserve(expected_count);
+
+    const char * cursor = line.c_str() + 2;
+    for (size_t i = 0; i < expected_count; ++i) {
+      char * end_ptr = nullptr;
+      const float value = std::strtof(cursor, &end_ptr);
+      if (end_ptr == cursor) {
+        return false;
+      }
+      out_values.push_back(safeFloat(value));
+
+      if (i + 1 < expected_count) {
+        if (*end_ptr != ',') {
+          return false;
+        }
+        cursor = end_ptr + 1;
+      } else {
+        if (*end_ptr != '\0') {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
   void openSerial()
   {
-    serial_fd_ = ::open(port_.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    serial_fd_ = ::open(port_.c_str(), O_RDWR | O_NOCTTY);
     if (serial_fd_ < 0) {
       RCLCPP_ERROR(get_logger(), "open(%s) failed: %s", port_.c_str(), std::strerror(errno));
       return;
@@ -117,6 +169,16 @@ private:
       serial_fd_ = -1;
       return;
     }
+
+    int modem_bits = 0;
+    if (::ioctl(serial_fd_, TIOCMGET, &modem_bits) == 0) {
+      modem_bits |= (TIOCM_DTR | TIOCM_RTS);
+      if (::ioctl(serial_fd_, TIOCMSET, &modem_bits) != 0) {
+        RCLCPP_WARN(get_logger(), "ioctl(TIOCMSET) failed: %s", std::strerror(errno));
+      }
+    } else {
+      RCLCPP_WARN(get_logger(), "ioctl(TIOCMGET) failed: %s", std::strerror(errno));
+    }
   }
 
   void sendLine(const std::string & line)
@@ -124,10 +186,28 @@ private:
     if (serial_fd_ < 0) {
       return;
     }
-    const ssize_t ret = ::write(serial_fd_, line.data(), line.size());
-    if (ret < 0) {
-      RCLCPP_ERROR_THROTTLE(
-        get_logger(), *get_clock(), 2000, "serial write failed: %s", std::strerror(errno));
+
+    size_t total = 0;
+    while (total < line.size()) {
+      const ssize_t ret = ::write(serial_fd_, line.data() + total, line.size() - total);
+      if (ret < 0) {
+        if (errno == EINTR) {
+          continue;
+        }
+        RCLCPP_ERROR_THROTTLE(
+          get_logger(), *get_clock(), 2000, "serial write failed: %s", std::strerror(errno));
+        ::close(serial_fd_);
+        serial_fd_ = -1;
+        return;
+      }
+      if (ret == 0) {
+        RCLCPP_ERROR_THROTTLE(
+          get_logger(), *get_clock(), 2000, "serial write returned 0 bytes");
+        ::close(serial_fd_);
+        serial_fd_ = -1;
+        return;
+      }
+      total += static_cast<size_t>(ret);
     }
   }
 
@@ -140,7 +220,7 @@ private:
       }
     }
 
-    redburi_msgs::msg::BaseMotor base{};
+    redburi_msgs::msg::BaseCommand base{};
     redburi_msgs::msg::ArmMotor arm{};
     const auto now_time = now();
     const auto timeout = rclcpp::Duration::from_seconds(command_timeout_sec_);
@@ -156,10 +236,8 @@ private:
     b.setf(std::ios::fixed);
     b.precision(3);
     b << "B,"
-      << safeFloat(base.motor_f_rpm) << ","
-      << safeFloat(base.motor_r_rpm) << ","
-      << safeFloat(base.motor_l_rpm) << ","
-      << safeFloat(base.steer_deg) << "\n";
+      << safeFloat(base.motor_rpm) << ","
+      << safeFloat(base.target_steer_deg) << "\n";
 
     std::ostringstream a;
     a.setf(std::ios::fixed);
@@ -175,6 +253,111 @@ private:
 
     sendLine(b.str());
     sendLine(a.str());
+    pollRxLines();
+  }
+
+  void pollRxLines()
+  {
+    if (serial_fd_ < 0) {
+      return;
+    }
+
+    char buf[256]{};
+    while (true) {
+      const ssize_t n = ::read(serial_fd_, buf, sizeof(buf));
+      if (n > 0) {
+        for (ssize_t i = 0; i < n; ++i) {
+          const char c = buf[i];
+          if (c == '\r') {
+            continue;
+          }
+          if (c == '\n') {
+            if (!rx_line_buffer_.empty()) {
+              processReceivedLine(rx_line_buffer_);
+              rx_line_buffer_.clear();
+            }
+            continue;
+          }
+
+          if (rx_line_buffer_.size() < 255) {
+            rx_line_buffer_.push_back(c);
+          } else {
+            // Drop too-long line and wait for next newline.
+            rx_line_buffer_.clear();
+          }
+        }
+        continue;
+      }
+
+      if (n == 0) {
+        break;
+      }
+
+      if (errno == EINTR) {
+        continue;
+      }
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        break;
+      }
+
+      RCLCPP_ERROR_THROTTLE(
+        get_logger(), *get_clock(), 2000, "serial read failed: %s", std::strerror(errno));
+      ::close(serial_fd_);
+      serial_fd_ = -1;
+      rx_line_buffer_.clear();
+      break;
+    }
+  }
+
+  void processReceivedLine(const std::string & line)
+  {
+    if (line.empty()) {
+      return;
+    }
+
+    std::vector<float> values{};
+
+    if (line[0] == 'J') {
+      if (!parseCsvFloats(line, 'J', 7, values)) {
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000, "failed to parse J line: %s", line.c_str());
+        return;
+      }
+      publishJointStates(values);
+      return;
+    }
+
+    if (line[0] == 'S') {
+      if (!parseCsvFloats(line, 'S', 1, values)) {
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000, "failed to parse S line: %s", line.c_str());
+        return;
+      }
+      publishSteerState(values[0]);
+      return;
+    }
+
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000, "unknown rx line: %s", line.c_str());
+  }
+
+  void publishJointStates(const std::vector<float> & values)
+  {
+    sensor_msgs::msg::JointState msg{};
+    msg.header.stamp = now();
+    msg.name = joint_names_;
+    msg.position.reserve(values.size());
+    for (float value : values) {
+      msg.position.push_back(static_cast<double>(value));
+    }
+    joint_state_pub_->publish(msg);
+  }
+
+  void publishSteerState(float steer_deg)
+  {
+    std_msgs::msg::Float32 msg{};
+    msg.data = steer_deg;
+    steer_state_pub_->publish(msg);
   }
 };
 
