@@ -9,8 +9,6 @@ joy_base_node:
     deadzone_backward: 0.1
     deadzone_steer: 0.1
     deadzone_spin: 0.2
-    wheelbase_m: 0.930535
-    tread_m: 0.675026
     max_spin_rpm: 30.0
     max_motor_rpm: 30.0
     max_steer_deg: 30.0

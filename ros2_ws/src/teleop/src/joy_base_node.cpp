@@ -3,7 +3,7 @@
 #include <memory>
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
-#include "redburi_msgs/msg/base_motor.hpp"
+#include "redburi_msgs/msg/base_command.hpp"
 
 class JoyBaseNode : public rclcpp::Node
 {
@@ -18,8 +18,6 @@ public:
     deadzone_backward_ = declare_parameter<double>("deadzone_backward");
     deadzone_steer_ = declare_parameter<double>("deadzone_steer");
     deadzone_spin_ = declare_parameter<double>("deadzone_spin");
-    wheelbase_m_ = declare_parameter<double>("wheelbase_m");
-    tread_m_ = declare_parameter<double>("tread_m");
     max_spin_rpm_ = declare_parameter<double>("max_spin_rpm");
     max_motor_rpm_ = declare_parameter<double>("max_motor_rpm");
     max_steer_deg_ = declare_parameter<double>("max_steer_deg");
@@ -32,7 +30,7 @@ public:
         joyCallback(msg);
       }
     );
-    base_pub_ = create_publisher<redburi_msgs::msg::BaseMotor>("/base_motor", 10);
+    base_pub_ = create_publisher<redburi_msgs::msg::BaseCommand>("/base_cmd", 10);
   }
 
 private:
@@ -48,14 +46,12 @@ private:
   double deadzone_backward_{};
   double deadzone_steer_{};
   double deadzone_spin_{};
-  double wheelbase_m_{};
-  double tread_m_{};
   double max_spin_rpm_{};
   double max_motor_rpm_{};
   double max_steer_deg_{};
 
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
-  rclcpp::Publisher<redburi_msgs::msg::BaseMotor>::SharedPtr base_pub_;
+  rclcpp::Publisher<redburi_msgs::msg::BaseCommand>::SharedPtr base_pub_;
 
   double scaleAxis(double input, double input_max, double deadzone, double max_output) const
   {
@@ -76,7 +72,7 @@ private:
 
   void joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
-    redburi_msgs::msg::BaseMotor base;
+    redburi_msgs::msg::BaseCommand base;
     double forward{};
     double backward{};
     double drive{};
@@ -117,40 +113,16 @@ private:
 
     if(spin != 0)
     {
-      base.steer_deg = 90.0;
-      base.motor_f_rpm = max_spin_rpm_ * spin;
-      base.motor_r_rpm = base.motor_f_rpm * (tread_m_ / 2.0) / wheelbase_m_;
-      base.motor_l_rpm = -base.motor_r_rpm;
+      base.target_steer_deg = 90.0;
+      base.motor_rpm = max_spin_rpm_ * spin;
     }
     else if(drive != 0.0 || steer != 0.0)
     {
-      base.steer_deg = max_steer_deg_ * steer;
-      double steer_rad = std::fabs(base.steer_deg) * M_PI / 180.0; 
-      base.motor_f_rpm = max_motor_rpm_ * drive;
-
-      if(steer == 0.0)
-      {
-        base.motor_r_rpm = base.motor_f_rpm;
-        base.motor_l_rpm = base.motor_f_rpm;  
-      }
-      else
-      {
-        double outer_rpm = base.motor_f_rpm * (wheelbase_m_ / std::tan(steer_rad) + tread_m_ / 2.0) / (wheelbase_m_ / std::sin(steer_rad));
-        double inner_rpm = base.motor_f_rpm * (wheelbase_m_ / std::tan(steer_rad) - tread_m_ / 2.0) / (wheelbase_m_ / std::sin(steer_rad));
-
-        if(steer > 0.0)
-        {
-          base.motor_r_rpm = outer_rpm;
-          base.motor_l_rpm = inner_rpm;
-        }
-        else
-        {
-          base.motor_r_rpm = inner_rpm;
-          base.motor_l_rpm = outer_rpm;
-        }
-      }
+      base.target_steer_deg = max_steer_deg_ * steer;
+      double steer_rad = std::fabs(base.target_steer_deg) * M_PI / 180.0; 
+      base.motor_rpm = max_motor_rpm_ * drive;
     }
-    
+
     base_pub_->publish(base);
   }
 };
