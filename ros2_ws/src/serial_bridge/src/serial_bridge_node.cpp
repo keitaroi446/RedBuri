@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <sstream>
@@ -9,9 +10,12 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <vector>
 #include "rclcpp/rclcpp.hpp"
 #include "redburi_msgs/msg/arm_motor.hpp"
 #include "redburi_msgs/msg/base_motor.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
+#include "std_msgs/msg/float32.hpp"
 
 class SerialBridgeNode : public rclcpp::Node
 {
@@ -41,6 +45,9 @@ public:
         has_arm_ = true;
         last_arm_time_ = now();
       });
+
+    joint_state_pub_ = create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
+    steer_state_pub_ = create_publisher<std_msgs::msg::Float32>("/steer_state", 10);
 
     openSerial();
 
@@ -76,12 +83,56 @@ private:
 
   rclcpp::Subscription<redburi_msgs::msg::BaseMotor>::SharedPtr base_sub_;
   rclcpp::Subscription<redburi_msgs::msg::ArmMotor>::SharedPtr arm_sub_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr steer_state_pub_;
   rclcpp::TimerBase::SharedPtr tx_timer_;
   std::string rx_line_buffer_{};
+  const std::vector<std::string> joint_names_{
+    "joint_1",
+    "joint_2",
+    "joint_3",
+    "joint_4",
+    "joint_5",
+    "joint_6",
+    "gripper_joint"};
 
   static float safeFloat(float v)
   {
     return std::isfinite(v) ? v : 0.0f;
+  }
+
+  static bool parseCsvFloats(
+    const std::string & line, char head, size_t expected_count, std::vector<float> & out_values)
+  {
+    if (line.size() < 3 || line[0] != head || line[1] != ',') {
+      return false;
+    }
+
+    out_values.clear();
+    out_values.reserve(expected_count);
+
+    const char * cursor = line.c_str() + 2;
+    for (size_t i = 0; i < expected_count; ++i) {
+      char * end_ptr = nullptr;
+      const float value = std::strtof(cursor, &end_ptr);
+      if (end_ptr == cursor) {
+        return false;
+      }
+      out_values.push_back(safeFloat(value));
+
+      if (i + 1 < expected_count) {
+        if (*end_ptr != ',') {
+          return false;
+        }
+        cursor = end_ptr + 1;
+      } else {
+        if (*end_ptr != '\0') {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   void openSerial()
@@ -224,7 +275,7 @@ private:
           }
           if (c == '\n') {
             if (!rx_line_buffer_.empty()) {
-              RCLCPP_INFO(get_logger(), "RX: %s", rx_line_buffer_.c_str());
+              processReceivedLine(rx_line_buffer_);
               rx_line_buffer_.clear();
             }
             continue;
@@ -258,6 +309,57 @@ private:
       rx_line_buffer_.clear();
       break;
     }
+  }
+
+  void processReceivedLine(const std::string & line)
+  {
+    if (line.empty()) {
+      return;
+    }
+
+    std::vector<float> values{};
+
+    if (line[0] == 'J') {
+      if (!parseCsvFloats(line, 'J', 7, values)) {
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000, "failed to parse J line: %s", line.c_str());
+        return;
+      }
+      publishJointStates(values);
+      return;
+    }
+
+    if (line[0] == 'S') {
+      if (!parseCsvFloats(line, 'S', 1, values)) {
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000, "failed to parse S line: %s", line.c_str());
+        return;
+      }
+      publishSteerState(values[0]);
+      return;
+    }
+
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000, "unknown rx line: %s", line.c_str());
+  }
+
+  void publishJointStates(const std::vector<float> & values)
+  {
+    sensor_msgs::msg::JointState msg{};
+    msg.header.stamp = now();
+    msg.name = joint_names_;
+    msg.position.reserve(values.size());
+    for (float value : values) {
+      msg.position.push_back(static_cast<double>(value));
+    }
+    joint_state_pub_->publish(msg);
+  }
+
+  void publishSteerState(float steer_deg)
+  {
+    std_msgs::msg::Float32 msg{};
+    msg.data = steer_deg;
+    steer_state_pub_->publish(msg);
   }
 };
 
