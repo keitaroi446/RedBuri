@@ -1,14 +1,14 @@
 #include "tim.h"
-#include "c620_control.hpp"
 #include "step_axis.hpp"
+#include <cstdint>
 
-extern C620Control c620_control;
+volatile uint8_t g_tim6_tick = 0;
 
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if (htim == &htim6)
+    if(htim == &htim6)
     {
-        c620_control.update();
+        g_tim6_tick = 1;
     }
 }
 
