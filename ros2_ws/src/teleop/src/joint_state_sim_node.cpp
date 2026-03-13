@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -81,7 +80,7 @@ private:
 
     for (size_t i = 0; i < kJointCount; ++i) {
       const double velocity = rpmToRadPerSec(commanded_rpm[i]);
-      positions_[i] = std::clamp(positions_[i] + velocity * dt, lower_limits_[i], upper_limits_[i]);
+      positions_[i] += velocity * dt;
       msg.position.push_back(positions_[i]);
       msg.velocity.push_back(velocity);
     }
@@ -101,20 +100,6 @@ private:
     "joint_4",
     "joint_5",
     "joint_6"};
-  std::array<double, kJointCount> lower_limits_{
-    -1.3963,
-    -2.7925,
-    -2.7925,
-    -1.3963,
-    -2.7925,
-    -1.3963};
-  std::array<double, kJointCount> upper_limits_{
-    1.3963,
-    0.0,
-    0.0,
-    1.3963,
-    0.0,
-    1.3963};
   std::chrono::steady_clock::time_point last_update_time_{};
   std::chrono::steady_clock::time_point last_command_time_{};
 
