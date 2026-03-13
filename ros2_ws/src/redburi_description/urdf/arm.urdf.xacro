@@ -10,8 +10,8 @@
   <xacro:property name="link7_len" value="0.08"/>
   <xacro:property name="gripper_len" value="0.06"/>
   <xacro:property name="gripper_radius" value="0.02"/>
-  <xacro:property name="mount_roll" value="0.349"/>
-  <xacro:property name="mount_pitch" value="0.0"/>
+  <xacro:property name="mount_roll" value="0.0"/>
+  <xacro:property name="mount_pitch" value="0.349"/>
   <xacro:property name="mount_yaw" value="0.0"/>
 
   <material name="gray">
@@ -67,7 +67,7 @@
     <child link="link_2"/>
     <origin xyz="0 0 ${link1_len}" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
   </joint>
 
   <link name="link_3">
@@ -83,9 +83,9 @@
   <joint name="joint_2" type="revolute">
     <parent link="link_2"/>
     <child link="link_3"/>
-    <origin xyz="0 0 ${link2_len}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${link2_len}" rpy="0 1.047 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+    <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
   </joint>
 
   <link name="link_4">
@@ -101,9 +101,9 @@
   <joint name="joint_3" type="revolute">
     <parent link="link_3"/>
     <child link="link_4"/>
-    <origin xyz="0 0 ${link3_len}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${link3_len}" rpy="0 1.047 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+    <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
   </joint>
 
   <link name="link_5">
@@ -121,7 +121,7 @@
     <child link="link_5"/>
     <origin xyz="0 0 ${link4_len}" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-3.14159" upper="3.14159" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
   </joint>
 
   <link name="link_6">
@@ -137,9 +137,9 @@
   <joint name="joint_5" type="revolute">
     <parent link="link_5"/>
     <child link="link_6"/>
-    <origin xyz="0 0 ${link5_len}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${link5_len}" rpy="0 1.047 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.0" velocity="1.0"/>
+    <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
   </joint>
 
   <link name="link_7">
@@ -157,7 +157,7 @@
     <child link="link_7"/>
     <origin xyz="0 0 ${link6_len}" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-3.14159" upper="3.14159" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
   </joint>
 
   <link name="gripper_link">
