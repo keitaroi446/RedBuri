@@ -1,23 +1,146 @@
 <?xml version="1.0"?>
 <robot name="redburi_arm" xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <xacro:property name="link_radius" value="0.03"/>
-  <xacro:property name="link1_len" value="0.20"/>
-  <xacro:property name="link2_len" value="0.16"/>
-  <xacro:property name="link3_len" value="0.12"/>
-  <xacro:property name="link4_len" value="0.10"/>
-  <xacro:property name="link5_len" value="0.05"/>
-  <xacro:property name="link6_len" value="0.05"/>
-  <xacro:property name="link7_len" value="0.08"/>
-  <xacro:property name="gripper_len" value="0.06"/>
-  <xacro:property name="gripper_radius" value="0.02"/>
+
+  <!-- dimensions -->
+  <xacro:property name="link_w" value="0.092"/>
+  <xacro:property name="link_h" value="0.092"/>
+
+  <xacro:property name="joint_y_length" value="0.1"/>
+  <xacro:property name="base_radius" value="0.06"/>
+  <xacro:property name="base_height" value="0.05"/>
+
+  <xacro:property name="link1_len" value="0.25"/>
+  <xacro:property name="link2_len" value="0.25"/>
+  <xacro:property name="link3_len" value="0.25"/>
+  <xacro:property name="link4_len" value="0.2"/>
+  <xacro:property name="link5_len" value="0.1"/>
+  <xacro:property name="link6_len" value="0.25"/>
+
+  <xacro:property name="gripper_w" value="0.03"/>
+  <xacro:property name="gripper_h" value="0.092"/>
+  <xacro:property name="gripper_len" value="0.2"/>
+  <xacro:property name="tool0_radius" value="0.015"/>
+
   <xacro:property name="mount_roll" value="0.0"/>
-  <xacro:property name="mount_pitch" value="0.349"/>
+  <xacro:property name="mount_pitch" value="0.349"/> <!-- ~20 deg -->
   <xacro:property name="mount_yaw" value="0.0"/>
+
+  <!-- joint mounting angles (rad, e.g. 1.047 ~= 60 deg) -->
+  <xacro:property name="joint_1_yaw" value="0.0"/> <!-- 0 deg -->
+  <xacro:property name="joint_2_pitch" value="1.221"/> <!-- ~70 deg -->
+  <xacro:property name="joint_3_pitch" value="1.221"/> <!-- ~70 deg -->
+  <xacro:property name="joint_4_yaw" value="0.0"/> <!-- 0 deg -->
+  <xacro:property name="joint_5_pitch" value="1.221"/> <!-- ~70 deg -->
+  <xacro:property name="joint_6_yaw" value="0.0"/> <!-- 0 deg -->
+
+  <!-- materials -->
+  <material name="dark_gray">
+    <color rgba="0.35 0.35 0.35 1.0"/>
+  </material>
 
   <material name="gray">
     <color rgba="0.7 0.7 0.7 1.0"/>
   </material>
 
+  <material name="blue">
+    <color rgba="0.25 0.45 0.90 1.0"/>
+  </material>
+
+  <material name="green">
+    <color rgba="0.25 0.75 0.35 1.0"/>
+  </material>
+
+  <material name="orange">
+    <color rgba="0.95 0.55 0.15 1.0"/>
+  </material>
+
+  <material name="red">
+    <color rgba="0.90 0.20 0.20 1.0"/>
+  </material>
+
+  <!-- macros -->
+
+  <!-- simple box link -->
+  <xacro:macro name="arm_box_link" params="name link_len material_name">
+    <link name="${name}">
+      <!-- arm body -->
+      <visual>
+        <origin xyz="0 0 ${link_len/2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_w} ${link_h} ${link_len}"/>
+        </geometry>
+        <material name="${material_name}"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 ${link_len/2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_w} ${link_h} ${link_len}"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <!-- box link without extra joint geometry for Z-axis joints -->
+  <xacro:macro name="arm_box_with_joint_z" params="name link_len material_name">
+    <link name="${name}">
+      <!-- arm body -->
+      <visual>
+        <origin xyz="0 0 ${link_len/2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_w} ${link_h} ${link_len}"/>
+        </geometry>
+        <material name="${material_name}"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 ${link_len/2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_w} ${link_h} ${link_len}"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <!-- box link with joint cylinder at root, aligned to Y-axis -->
+  <!-- cylinder default axis is Z, so rotate by +90deg about X to align with Y -->
+  <xacro:macro name="arm_box_with_joint_y" params="name link_len material_name">
+    <link name="${name}">
+      <!-- joint visual -->
+      <visual>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry>
+          <cylinder radius="${link_w/2.0}" length="${joint_y_length}"/>
+        </geometry>
+        <material name="dark_gray"/>
+      </visual>
+
+      <!-- arm body -->
+      <visual>
+        <origin xyz="0 0 ${link_len/2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_w} ${link_h} ${link_len}"/>
+        </geometry>
+        <material name="${material_name}"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry>
+          <cylinder radius="${link_w/2.0}" length="${joint_y_length}"/>
+        </geometry>
+      </collision>
+
+      <collision>
+        <origin xyz="0 0 ${link_len/2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${link_w} ${link_h} ${link_len}"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <!-- base -->
   <link name="base_mount"/>
 
   <joint name="base_mount_to_base_link" type="fixed">
@@ -28,162 +151,127 @@
 
   <link name="base_link">
     <visual>
-      <origin xyz="0 0 0.025" rpy="0 0 0"/>
+      <origin xyz="0 0 ${base_height/2.0}" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.05" length="0.05"/>
+        <cylinder radius="${base_radius}" length="${base_height}"/>
       </geometry>
-      <material name="gray"/>
+      <material name="dark_gray"/>
     </visual>
+
+    <collision>
+      <origin xyz="0 0 ${base_height/2.0}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${base_radius}" length="${base_height}"/>
+      </geometry>
+    </collision>
   </link>
 
-  <link name="link_1">
-    <visual>
-      <origin xyz="0 0 ${link1_len / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${link1_len}"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-  </link>
+  <!-- link_1 : fixed vertical column -->
+  <xacro:arm_box_link name="link_1" link_len="${link1_len}" material_name="gray"/>
 
   <joint name="base_link_to_link_1" type="fixed">
     <parent link="base_link"/>
     <child link="link_1"/>
-    <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    <origin xyz="0 0 ${base_height}" rpy="0 0 0"/>
   </joint>
 
-  <link name="link_2">
-    <visual>
-      <origin xyz="0 0 ${link2_len / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${link2_len}"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-  </link>
+  <!-- joint_1 : z -->
+  <xacro:arm_box_with_joint_z name="link_2" link_len="${link2_len}" material_name="gray"/>
 
   <joint name="joint_1" type="revolute">
     <parent link="link_1"/>
     <child link="link_2"/>
-    <origin xyz="0 0 ${link1_len}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${link1_len}" rpy="0 0 ${joint_1_yaw}"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
   </joint>
 
-  <link name="link_3">
-    <visual>
-      <origin xyz="0 0 ${link3_len / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${link3_len}"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-  </link>
+  <!-- joint_2 : y -->
+  <xacro:arm_box_with_joint_y name="link_3" link_len="${link3_len}" material_name="gray"/>
 
   <joint name="joint_2" type="revolute">
     <parent link="link_2"/>
     <child link="link_3"/>
-    <origin xyz="0 0 ${link2_len}" rpy="0 1.047 0"/>
+    <origin xyz="0 0 ${link2_len}" rpy="0 ${joint_2_pitch} 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
   </joint>
 
-  <link name="link_4">
-    <visual>
-      <origin xyz="0 0 ${link4_len / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${link4_len}"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-  </link>
+  <!-- joint_3 : y -->
+  <xacro:arm_box_with_joint_y name="link_4" link_len="${link4_len}" material_name="gray"/>
 
   <joint name="joint_3" type="revolute">
     <parent link="link_3"/>
     <child link="link_4"/>
-    <origin xyz="0 0 ${link3_len}" rpy="0 1.047 0"/>
+    <origin xyz="0 0 ${link3_len}" rpy="0 ${joint_3_pitch} 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
   </joint>
 
-  <link name="link_5">
-    <visual>
-      <origin xyz="0 0 ${link5_len / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${link5_len}"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-  </link>
+  <!-- joint_4 : z -->
+  <xacro:arm_box_with_joint_z name="link_5" link_len="${link5_len}" material_name="gray"/>
 
   <joint name="joint_4" type="revolute">
     <parent link="link_4"/>
     <child link="link_5"/>
-    <origin xyz="0 0 ${link4_len}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${link4_len}" rpy="0 0 ${joint_4_yaw}"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
   </joint>
 
-  <link name="link_6">
-    <visual>
-      <origin xyz="0 0 ${link6_len / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${link_radius}" length="${link6_len}"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-  </link>
+  <!-- joint_5 : y -->
+  <xacro:arm_box_with_joint_y name="link_6" link_len="${link6_len}" material_name="gray"/>
 
   <joint name="joint_5" type="revolute">
     <parent link="link_5"/>
     <child link="link_6"/>
-    <origin xyz="0 0 ${link5_len}" rpy="0 1.047 0"/>
+    <origin xyz="0 0 ${link5_len}" rpy="0 ${joint_5_pitch} 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
   </joint>
 
-  <link name="link_7">
+  <!-- gripper -->
+  <link name="gripper_link">
     <visual>
-      <origin xyz="0 0 ${link7_len / 2.0}" rpy="0 0 0"/>
+      <origin xyz="0 0 ${gripper_len/2.0}" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="${link_radius}" length="${link7_len}"/>
+        <box size="${gripper_w} ${gripper_h} ${gripper_len}"/>
       </geometry>
       <material name="gray"/>
     </visual>
+
+    <collision>
+      <origin xyz="0 0 ${gripper_len/2.0}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${gripper_w} ${gripper_h} ${gripper_len}"/>
+      </geometry>
+    </collision>
   </link>
 
   <joint name="joint_6" type="revolute">
     <parent link="link_6"/>
-    <child link="link_7"/>
-    <origin xyz="0 0 ${link6_len}" rpy="0 0 0"/>
+    <child link="gripper_link"/>
+    <origin xyz="0 0 ${link6_len}" rpy="0 0 ${joint_6_yaw}"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
   </joint>
 
-  <link name="gripper_link">
-    <visual>
-      <origin xyz="0 0 ${gripper_len / 2.0}" rpy="0 0 0"/>
-      <geometry>
-        <cylinder radius="${gripper_radius}" length="${gripper_len}"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-  </link>
-
-  <joint name="gripper_fixed" type="fixed">
-    <parent link="link_7"/>
-    <child link="gripper_link"/>
-    <origin xyz="0 0 ${link7_len}" rpy="0 0 0"/>
-  </joint>
-
+  <!-- tool0 -->
   <link name="tool0">
     <visual>
-      <origin xyz="0 0 0.015" rpy="0 0 0"/>
+      <origin xyz="0 0 ${tool0_radius}" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.015"/>
+        <sphere radius="${tool0_radius}"/>
       </geometry>
-      <material name="gray"/>
+      <material name="red"/>
     </visual>
+
+    <collision>
+      <origin xyz="0 0 ${tool0_radius}" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${tool0_radius}"/>
+      </geometry>
+    </collision>
   </link>
 
   <joint name="tool0_fixed" type="fixed">
@@ -191,4 +279,5 @@
     <child link="tool0"/>
     <origin xyz="0 0 ${gripper_len}" rpy="0 0 0"/>
   </joint>
+
 </robot>

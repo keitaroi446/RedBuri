@@ -1,10 +1,14 @@
+import os
+
 from launch import LaunchDescription
-from launch.substitutions import Command, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+    rviz_config = LaunchConfiguration("rviz_config")
     xacro_path = PathJoinSubstitution(
         [FindPackageShare("redburi_description"), "urdf", "arm.urdf.xacro"]
     )
@@ -14,6 +18,10 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "rviz_config",
+                default_value=os.path.expanduser("~/.rviz2/redburi.rviz"),
+            ),
             Node(
                 package="joint_state_publisher_gui",
                 executable="joint_state_publisher_gui",
@@ -30,6 +38,7 @@ def generate_launch_description():
                 package="rviz2",
                 executable="rviz2",
                 name="rviz2",
+                arguments=["-d", rviz_config],
             ),
         ]
     )
