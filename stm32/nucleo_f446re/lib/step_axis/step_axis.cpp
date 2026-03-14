@@ -25,7 +25,8 @@ StepAxis::StepAxis(TIM_HandleTypeDef* timer,
       gear_ratio_(gear_ratio),
       remaining_steps_(0U),
       running_(false),
-      current_deg_(0.0f)
+      current_deg_(0.0f),
+      target_deg_(0.0f)
 {
     registerInstance(this);
 }
@@ -61,11 +62,49 @@ void StepAxis::setStepFrequencyHz(uint32_t step_hz)
 
 void StepAxis::moveToDeg(float target_deg)
 {
-    const float delta = target_deg - current_deg_;
-    startMoveRelativeDeg(delta);
+    if (!startMoveToDeg(target_deg)) return;
     while (running_) {
     }
-    current_deg_ = target_deg;
+}
+
+bool StepAxis::startMoveToDeg(float target_deg)
+{
+    if (running_) return false;
+    const float delta = target_deg - current_deg_;
+    const uint32_t steps = angleToSteps(delta);
+    if (steps == 0U) {
+        current_deg_ = target_deg;
+        target_deg_ = target_deg;
+        return true;
+    }
+
+    const bool positive = (delta >= 0.0f);
+    const GPIO_PinState dir_state =
+        ((positive && dir_positive_high_) || (!positive && !dir_positive_high_))
+            ? GPIO_PIN_SET : GPIO_PIN_RESET;
+    HAL_GPIO_WritePin(dir_port_, dir_pin_, dir_state);
+
+    remaining_steps_ = steps;
+    running_ = true;
+    target_deg_ = target_deg;
+    if (HAL_TIM_PWM_Start_IT(timer_, channel_) != HAL_OK) {
+        running_ = false;
+        remaining_steps_ = 0U;
+        return false;
+    }
+    return true;
+}
+
+void StepAxis::resetCurrentDeg(float deg)
+{
+    // If a move is in progress, stop it and reset state.
+    if (running_) {
+        HAL_TIM_PWM_Stop_IT(timer_, channel_);
+        running_ = false;
+        remaining_steps_ = 0U;
+    }
+    current_deg_ = deg;
+    target_deg_ = deg;
 }
 
 void StepAxis::onPulseFinished()
@@ -77,6 +116,7 @@ void StepAxis::onPulseFinished()
     if (remaining_steps_ == 0U) {
         HAL_TIM_PWM_Stop_IT(timer_, channel_);
         running_ = false;
+        current_deg_ = target_deg_;
     }
 }
 
@@ -89,6 +129,17 @@ void StepAxis::moveAxisToDeg(StepAxis* const* axes,
     if (axis_index >= axis_count) return;
     if (axes[axis_index] == nullptr) return;
     axes[axis_index]->moveToDeg(target_deg);
+}
+
+bool StepAxis::startAxisToDeg(StepAxis* const* axes,
+                              size_t axis_count,
+                              size_t axis_index,
+                              float target_deg)
+{
+    if (axes == nullptr) return false;
+    if (axis_index >= axis_count) return false;
+    if (axes[axis_index] == nullptr) return false;
+    return axes[axis_index]->startMoveToDeg(target_deg);
 }
 
 void StepAxis::onPulseFinishedForTimer(TIM_HandleTypeDef* htim)

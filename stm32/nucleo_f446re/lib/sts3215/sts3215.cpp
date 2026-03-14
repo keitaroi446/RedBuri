@@ -16,6 +16,12 @@ STS3215::STS3215(UART_HandleTypeDef* huart, uint8_t id,
   zeroDirReversed_(false), lastZeroDeg_(0.0f), lastZeroDegValid_(false),
   clampTargetDeg_(0.0f), clampTargetInited_(false),
   uart_state_(UartState::Idle),
+  uart_deadline_ms_(0),
+  uart_timeout_ms_(30),
+  req_interval_ms_(100),
+  cmd_interval_ms_(20),
+  next_req_ms_(0),
+  next_cmd_ms_(0),
   tx_msg_{0}, rx_msg_{0}, last_pos_(-1), last_pos_valid_(false),
   ledPort_(ledPort), ledPin_(ledPin)
 {
@@ -83,11 +89,78 @@ bool STS3215::requestPositionIT()
 
     toTx();
     uart_state_ = UartState::TxPending;
+    uart_deadline_ms_ = HAL_GetTick() + uart_timeout_ms_;
     if (HAL_UART_Transmit_IT(huart_, tx_msg_, sizeof(tx_msg_)) != HAL_OK) {
         uart_state_ = UartState::Idle;
         return false;
     }
     return true;
+}
+
+void STS3215::setUartTimeoutMs(uint32_t timeout_ms)
+{
+    if (timeout_ms < 1U) timeout_ms = 1U;
+    uart_timeout_ms_ = timeout_ms;
+}
+
+void STS3215::setRequestIntervalMs(uint32_t interval_ms)
+{
+    if (interval_ms < 1U) interval_ms = 1U;
+    req_interval_ms_ = interval_ms;
+}
+
+void STS3215::setCommandIntervalMs(uint32_t interval_ms)
+{
+    if (interval_ms < 1U) interval_ms = 1U;
+    cmd_interval_ms_ = interval_ms;
+}
+
+void STS3215::pollUart(uint32_t now_ms)
+{
+    if (uart_state_ == UartState::Idle) return;
+    if (static_cast<int32_t>(now_ms - uart_deadline_ms_) < 0) return;
+
+    (void)HAL_UART_Abort_IT(huart_);
+    uart_state_ = UartState::Idle;
+    __HAL_UART_CLEAR_OREFLAG(huart_);
+#if defined(__HAL_UART_CLEAR_IDLEFLAG)
+    __HAL_UART_CLEAR_IDLEFLAG(huart_);
+#endif
+#if defined(__HAL_UART_FLUSH_DRREGISTER)
+    __HAL_UART_FLUSH_DRREGISTER(huart_);
+#endif
+}
+
+void STS3215::serviceFromLastZero(uint32_t now_ms,
+                                  float target_deg,
+                                  uint16_t time_ms,
+                                  uint16_t speed)
+{
+    pollUart(now_ms);
+
+    if (now_ms >= next_req_ms_ && !isUartBusy()) {
+        requestPositionIT();
+        next_req_ms_ = now_ms + req_interval_ms_;
+    }
+
+    if (now_ms >= next_cmd_ms_ && !isUartBusy()) {
+        if (hasLastPosition()) {
+            (void)setAngleFromLastZeroDeg(target_deg, time_ms, speed);
+        }
+        next_cmd_ms_ = now_ms + cmd_interval_ms_;
+    }
+}
+
+bool STS3215::serviceReceiveFromLastZero(uint32_t now_ms, float* out_deg)
+{
+    pollUart(now_ms);
+
+    if (now_ms >= next_req_ms_ && !isUartBusy()) {
+        requestPositionIT();
+        next_req_ms_ = now_ms + req_interval_ms_;
+    }
+
+    return updateRelativeDegFromLast(out_deg);
 }
 
 bool STS3215::captureZeroFromLast(){
@@ -111,6 +184,29 @@ float STS3215::getAngleFromZeroDegFromLast() const{
     return ticksToDeg(static_cast<uint16_t>(rel));
 }
 
+bool STS3215::updateRelativeDegFromLast(float* out_deg)
+{
+    if (out_deg == nullptr) return false;
+    if (!last_pos_valid_) return false;
+    if (!zeroCaptured_) {
+        if (!captureZeroFromLast()) return false;
+    }
+    const float deg = getAngleFromZeroDegFromLast();
+    if (deg < 0.0f) return false;
+    *out_deg = deg;
+    return true;
+}
+
+HAL_StatusTypeDef STS3215::setAngleFromLastZeroDeg(float target_deg,
+                                                   uint16_t time_ms,
+                                                   uint16_t speed)
+{
+    if (!zeroCaptured_) {
+        if (!captureZeroFromLast()) return HAL_ERROR;
+    }
+    return setAngleFromZeroDeg(target_deg, time_ms, speed);
+}
+
 void STS3215::onUartTxCplt(UART_HandleTypeDef* huart)
 {
     for (size_t i = 0; i < s_stsInstanceCount; ++i) {
@@ -121,6 +217,7 @@ void STS3215::onUartTxCplt(UART_HandleTypeDef* huart)
 
         inst->toRx();
         inst->uart_state_ = UartState::RxPending;
+        inst->uart_deadline_ms_ = HAL_GetTick() + inst->uart_timeout_ms_;
         if (HAL_UART_Receive_IT(inst->huart_, inst->rx_msg_, sizeof(inst->rx_msg_)) != HAL_OK) {
             inst->uart_state_ = UartState::Idle;
         }
@@ -449,4 +546,55 @@ uint16_t STS3215::degToPos(float deg) {
 float STS3215::ticksToDeg(uint16_t ticks) {
     const uint16_t t = static_cast<uint16_t>(ticks % 4096U);
     return (static_cast<float>(t) * 360.0f) / 4096.0f;
+}
+
+HAL_StatusTypeDef STS3215::writeReg8(uint8_t addr, uint8_t value)
+{
+    uint8_t msg[8] = {0xFF, 0xFF, id_, 4, 3, addr, value, 0};
+    msg[7] = calcChecksum(msg, sizeof(msg));
+    toTx();
+    auto st = HAL_UART_Transmit(huart_, msg, sizeof(msg), 30);
+    if (st != HAL_OK) return st;
+    while (__HAL_UART_GET_FLAG(huart_, UART_FLAG_TC) == RESET) {}
+    toRx();
+    return st;
+}
+
+// ID変更は通信エラーのリスクがあるため、成功したときのみローカルのIDを更新する
+HAL_StatusTypeDef STS3215::setId(uint8_t new_id)
+{
+    const HAL_StatusTypeDef st = writeReg8(5, new_id);
+    if (st == HAL_OK) id_ = new_id; // ローカルのIDも更新
+    return st;
+}
+
+HAL_StatusTypeDef STS3215::setEepromLock(bool locked)
+{
+    // Reg 48 (0x30): 0 = unlock (EEPROM書き込み有効), 1 = lock
+    HAL_StatusTypeDef st = writeReg8(0x30, locked ? 1 : 0);
+    if (st != HAL_OK) return st;
+    HAL_Delay(10);
+    // 一部資料では 0x37 もロックフラグ扱い
+    st = writeReg8(0x37, locked ? 1 : 0);
+    return st;
+}
+
+HAL_StatusTypeDef STS3215::setIdPersistent(uint8_t new_id, bool relock)
+{
+    // EEPROMに書くため一時的にアンロックする
+    HAL_StatusTypeDef st = setEepromLock(false);
+    if (st != HAL_OK) return st;
+    HAL_Delay(100);
+
+    st = setId(new_id);
+    if (st != HAL_OK) {
+        (void)setEepromLock(true);
+        return st;
+    }
+    HAL_Delay(100);
+
+    if (relock) {
+        (void)setEepromLock(true);
+    }
+    return HAL_OK;
 }

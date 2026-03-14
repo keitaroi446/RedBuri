@@ -17,6 +17,12 @@ public:
     HAL_StatusTypeDef setPosition(uint16_t position,
                                   uint16_t time_ms = 0,
                                   uint16_t speed   = 0);
+    // ID変更（Reg 5）
+    HAL_StatusTypeDef setId(uint8_t new_id);
+    // EEPROMロック（Reg 48 / 0x30） true=ロック, false=アンロック
+    HAL_StatusTypeDef setEepromLock(bool locked);
+    // ID変更をEEPROMに永続化（必要ならロック解除→変更→再ロック）
+    HAL_StatusTypeDef setIdPersistent(uint8_t new_id, bool relock = true);
 
     // 現在位置（Reg 56）: 正常 0-4095 / 失敗 -1
     int16_t getPosition(uint32_t timeout_ms = 40);
@@ -74,11 +80,25 @@ public:
     // --- Non-blocking (UART IT) ---
     bool requestPositionIT();
     bool isUartBusy() const { return uart_state_ != UartState::Idle; }
+    void pollUart(uint32_t now_ms);
+    void setUartTimeoutMs(uint32_t timeout_ms);
+    void setRequestIntervalMs(uint32_t interval_ms);
+    void setCommandIntervalMs(uint32_t interval_ms);
+    void serviceFromLastZero(uint32_t now_ms,
+                             float target_deg,
+                             uint16_t time_ms = 0,
+                             uint16_t speed = 0);
+    // 受信（位置取得）だけを回す版：out_deg に相対角を入れる
+    bool serviceReceiveFromLastZero(uint32_t now_ms, float* out_deg);
     bool hasLastPosition() const { return last_pos_valid_; }
     int16_t getLastPosition() const { return last_pos_; }
     float getLastAngleDeg() const { return last_pos_valid_ ? ticksToDeg(static_cast<uint16_t>(last_pos_)) : -1.0f; }
     bool captureZeroFromLast();
     float getAngleFromZeroDegFromLast() const;
+    bool updateRelativeDegFromLast(float* out_deg);
+    HAL_StatusTypeDef setAngleFromLastZeroDeg(float target_deg,
+                                              uint16_t time_ms = 0,
+                                              uint16_t speed = 0);
     static void onUartTxCplt(UART_HandleTypeDef* huart);
     static void onUartRxCplt(UART_HandleTypeDef* huart);
     static void onUartError(UART_HandleTypeDef* huart);
@@ -103,6 +123,12 @@ private:
     float               clampTargetDeg_;
     bool                clampTargetInited_;
     volatile UartState  uart_state_;
+    uint32_t            uart_deadline_ms_;
+    uint32_t            uart_timeout_ms_;
+    uint32_t            req_interval_ms_;
+    uint32_t            cmd_interval_ms_;
+    uint32_t            next_req_ms_;
+    uint32_t            next_cmd_ms_;
     uint8_t             tx_msg_[8];
     uint8_t             rx_msg_[8];
     int16_t             last_pos_;
@@ -113,6 +139,7 @@ private:
     // 低レベル補助
     static float clampDeg01(float deg);
     static uint8_t calcChecksum(const uint8_t* msg, size_t len);
+    HAL_StatusTypeDef writeReg8(uint8_t addr, uint8_t value);
     inline void toTx() { HAL_HalfDuplex_EnableTransmitter(huart_); }
     inline void toRx() { HAL_HalfDuplex_EnableReceiver(huart_);   }
     inline void ledOn()  { if (ledPort_) HAL_GPIO_WritePin(ledPort_, ledPin_, GPIO_PIN_SET); }
