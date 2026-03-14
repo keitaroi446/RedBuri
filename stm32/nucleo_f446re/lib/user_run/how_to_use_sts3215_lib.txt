@@ -1,0 +1,49 @@
+#include <cstdio>
+#include <cstdint>
+#include "c620_can.hpp"
+#include "c620_control.hpp"
+#include "sts3215.hpp"
+#include "step_axis.hpp"
+#include "motor_command_receiver.hpp"
+
+C620CAN c620_can(&hcan1);
+C620Control c620_control(c620_can, htim6);
+STS3215 servo1(&huart1, 2, GPIOA, GPIO_PIN_5);
+STS3215 servo2(&huart1, 1, GPIOA, GPIO_PIN_5);
+MotorCommandReceiver cmd(huart2);
+
+namespace run
+{
+    void setup()
+    {
+        c620_can.init();
+        c620_control.init();
+        cmd.init();
+        HAL_Delay(1000);
+    }
+
+    void loop()
+    {
+        float current_steer_deg{};
+        float target_steer_deg = 30.0f;
+        const uint32_t now_ms = HAL_GetTick();
+
+        /*現在角度受信*/
+        servo1.serviceReceiveFromLastZero(now_ms, &current_steer_deg);
+
+        /*目標角度送信*/
+        servo1.serviceFromLastZero(now_ms, target_steer_deg, 0, 500);
+        printf("%f\n", current_steer_deg);
+        HAL_Delay(10);
+    }
+}
+
+extern "C" void setup_c()
+{
+    run::setup();
+}
+
+extern "C" void loop_c()
+{
+    run::loop();
+}
