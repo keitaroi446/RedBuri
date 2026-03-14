@@ -1,0 +1,10 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: redburi_description
+    relative_path: urdf/arm.urdf.xacro
+  srdf:
+    relative_path: config/redburi_arm.srdf
+  package_settings:
+    author_name: keitaro
+    author_email: "149392536+keitaroi446@users.noreply.github.com\n"
+    generated_timestamp: 1773487920
