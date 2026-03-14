@@ -28,9 +28,9 @@ servo_node:
 
       incoming_command_timeout: 0.1
       num_outgoing_halt_msgs_to_publish: 4
-      lower_singularity_threshold: 17.0
-      hard_stop_singularity_threshold: 30.0
-      leaving_singularity_threshold_multiplier: 2.0
+      lower_singularity_threshold: 25.0
+      hard_stop_singularity_threshold: 45.0
+      leaving_singularity_threshold_multiplier: 3.0
       joint_limit_margin: 0.1
 
       cartesian_command_in_topic: /servo_node/delta_twist_cmds
