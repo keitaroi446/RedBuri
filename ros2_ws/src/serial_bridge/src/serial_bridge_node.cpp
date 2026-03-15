@@ -99,14 +99,14 @@ private:
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr raw_rx_line_pub_;
   rclcpp::TimerBase::SharedPtr tx_timer_;
   std::string rx_line_buffer_{};
+  static constexpr size_t kArmJointCount = 6;
   const std::vector<std::string> joint_names_{
     "joint_1",
     "joint_2",
     "joint_3",
     "joint_4",
     "joint_5",
-    "joint_6",
-    "gripper_joint"};
+    "joint_6"};
 
   static float safeFloat(float v)
   {
@@ -374,10 +374,15 @@ private:
     std::vector<float> values{};
 
     if (line[0] == 'J') {
-      if (!parseCsvFloats(line, 'J', 7, values)) {
+      if (!parseCsvFloats(line, 'J', kArmJointCount, values) &&
+        !parseCsvFloats(line, 'J', kArmJointCount + 1, values))
+      {
         RCLCPP_WARN_THROTTLE(
           get_logger(), *get_clock(), 2000, "failed to parse J line: %s", line.c_str());
         return;
+      }
+      if (values.size() > kArmJointCount) {
+        values.resize(kArmJointCount);
       }
       publishJointStates(values);
       return;

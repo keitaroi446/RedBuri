@@ -37,7 +37,8 @@ def generate_launch_description():
             os.path.join(
                 get_package_share_directory("redburi_launch"), "launch", "teleop_sim.launch.py"
             )
-        )
+        ),
+        launch_arguments={"arm_joint_output_mode": "joint_jog"}.items(),
     )
 
     robot_state_publisher_launch = IncludeLaunchDescription(

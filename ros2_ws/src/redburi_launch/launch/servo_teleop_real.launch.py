@@ -47,6 +47,7 @@ def generate_launch_description():
             "joy_dev": joy_dev,
             "joy_deadzone": joy_deadzone,
             "joy_autorepeat_rate": joy_autorepeat_rate,
+            "arm_joint_output_mode": "joint_jog",
         }.items(),
     )
 
