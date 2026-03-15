@@ -1,8 +1,10 @@
 #include <cstdint>
 #include "tim.h"
+#include "c620_can.hpp"
 #include "c620_control.hpp"
 #include "step_axis.hpp"
 
+extern C620CAN c620_can;
 extern C620Control c620_control;
 
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
@@ -11,6 +13,7 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
         c620_control.updateSpeedControl();
         c620_control.updateHoldControl();
+        c620_can.sendCurrents();
     }
 }
 

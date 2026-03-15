@@ -1,0 +1,124 @@
+#include <cstdio>
+#include <cstdint>
+#include "c620_can.hpp"
+#include "c620_control.hpp"
+#include "sts3215.hpp"
+#include "step_axis.hpp"
+#include "motor_command_receiver.hpp"
+
+C620CAN c620_can(&hcan1);
+C620Control c620_control(c620_can, htim6);
+STS3215 servo1(&huart1, 2, GPIOA, GPIO_PIN_5);
+STS3215 servo2(&huart1, 1, GPIOA, GPIO_PIN_5);
+StepAxis axis1{&htim2, TIM_CHANNEL_1, GPIOB, GPIO_PIN_7, true, 1.8f, 8U, 15.0f}; // PUL=PA15, DIR=PB7
+StepAxis axis2{&htim3, TIM_CHANNEL_1, GPIOA, GPIO_PIN_4, true, 1.8f, 8U, 15.0f}; // PUL=PA6,  DIR=PA4
+StepAxis axis3{&htim4, TIM_CHANNEL_1, GPIOB, GPIO_PIN_4, true, 1.8f, 8U, 15.0f}; // PUL=PB6,  DIR=PB4
+StepAxis* const axes[] = {&axis1, &axis2, &axis3};
+MotorCommandReceiver cmd(huart2);
+
+constexpr size_t kAxisCount = sizeof(axes) / sizeof(axes[0]);
+constexpr uint32_t kStepHzPerOutputRpm = 400U;
+constexpr int8_t kStepAxisDirectionSigns[kAxisCount] = {1, 1, 1};
+constexpr float kPi = 3.1415926535f;
+
+uint32_t outputRpmToStepHz(int16_t output_rpm)
+{
+    const int32_t abs_rpm =
+        (output_rpm < 0) ? -static_cast<int32_t>(output_rpm) : static_cast<int32_t>(output_rpm);
+    return static_cast<uint32_t>(abs_rpm) * kStepHzPerOutputRpm;
+}
+
+void applyStepAxisCommand(StepAxis& axis, int16_t output_rpm, int8_t direction_sign, int8_t& last_sign)
+{
+    if(output_rpm == 0)
+    {
+        axis.stopContinuous();
+        last_sign = 0;
+        return;
+    }
+
+    const int8_t desired_sign = (output_rpm > 0) ? direction_sign : -direction_sign;
+    axis.setStepFrequencyHz(outputRpmToStepHz(output_rpm));
+
+    if(!axis.isRunning())
+    {
+        axis.startContinuous(desired_sign > 0);
+        last_sign = desired_sign;
+        return;
+    }
+
+    if(last_sign != desired_sign)
+    {
+        axis.stopContinuous();
+        axis.startContinuous(desired_sign > 0);
+    }
+
+    last_sign = desired_sign;
+}
+
+namespace run
+{
+    void setup()
+    {
+        c620_can.init();
+        c620_control.init();
+        cmd.init();
+        HAL_Delay(1000);
+        axis1.resetCurrentDeg(0.0f);
+        axis2.resetCurrentDeg(0.0f);
+        axis3.resetCurrentDeg(0.0f);
+    }
+
+    void loop()
+    {
+        static int8_t last_axis_signs[kAxisCount] = {0, 0, 0};
+
+        MotorCommandReceiver::ArmCommand arm_cmd{};
+        if(cmd.fetchArmCommand(arm_cmd))
+        {
+            applyStepAxisCommand(axis1, arm_cmd.motor_rpm[0], kStepAxisDirectionSigns[0], last_axis_signs[0]);
+            applyStepAxisCommand(axis2, arm_cmd.motor_rpm[1], kStepAxisDirectionSigns[1], last_axis_signs[1]);
+            applyStepAxisCommand(axis3, arm_cmd.motor_rpm[2], kStepAxisDirectionSigns[2], last_axis_signs[2]);
+            c620_control.setTargetSpeed(4, arm_cmd.motor_rpm[3]);
+            c620_control.setTargetSpeed(5, arm_cmd.motor_rpm[4]);
+            c620_control.setTargetSpeed(6, arm_cmd.motor_rpm[5]);
+            c620_can.sendCurrents();
+        }
+
+        float joint_1_rad = axis1.getCurrentDeg() * kPi / 180.0f;
+        float joint_2_rad = axis2.getCurrentDeg() * kPi / 180.0f;
+        float joint_3_rad = axis3.getCurrentDeg() * kPi / 180.0f;
+        float joint_4_deg{};
+        float joint_5_deg{};
+        float joint_6_deg{};
+        float gripper_rad{};
+        c620_control.getCurrentAngleDeg(4, joint_4_deg);
+        c620_control.getCurrentAngleDeg(5, joint_5_deg);
+        c620_control.getCurrentAngleDeg(6, joint_6_deg);
+
+        float joint_4_rad = joint_4_deg * kPi / 180.0f;
+        float joint_5_rad = joint_5_deg * kPi / 180.0f;
+        float joint_6_rad = joint_6_deg * kPi / 180.0f;
+
+        printf("J,%f,%f,%f,%f,%f,%f,%f\n",
+            joint_1_rad,
+            joint_2_rad,
+            joint_3_rad,
+            joint_4_rad,
+            joint_5_rad,
+            joint_6_rad,
+            gripper_rad);
+        
+        HAL_Delay(50);
+    }
+}
+
+extern "C" void setup_c()
+{
+    run::setup();
+}
+
+extern "C" void loop_c()
+{
+    run::loop();
+}
