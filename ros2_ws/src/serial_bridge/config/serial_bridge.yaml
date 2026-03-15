@@ -1,5 +1,7 @@
 serial_bridge_node:
   ros__parameters:
-    port: "/dev/serial/by-id/usb-STMicroelectronics_STM32_STLink_066CFF515086874967232510-if02"
+    candidate_ports:
+      - "/dev/serial/by-id/usb-STMicroelectronics_STM32_STLink_066CFF515086874967232510-if02"
+      - "/dev/serial/by-id/usb-STMicroelectronics_STM32_STLink_0670FF383159393143062644-if02"
     tx_rate_hz: 60.0
     command_timeout_sec: 0.2
