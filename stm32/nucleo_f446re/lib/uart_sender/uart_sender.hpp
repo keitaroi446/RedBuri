@@ -11,13 +11,13 @@ public:
     UartSender(UART_HandleTypeDef& huart, TIM_HandleTypeDef& htim);
     void init();
     void onTimerTick();
-    void sendJointDeg(int32_t joint_1_mrad,
-                      int32_t joint_2_mrad,
-                      int32_t joint_3_mrad,
-                      int32_t joint_4_mrad,
-                      int32_t joint_5_mrad,
-                      int32_t joint_6_mrad,
-                      int32_t gripper_mrad);
+    void sendJointDeg(float joint_1_rad,
+                      float joint_2_rad,
+                      float joint_3_rad,
+                      float joint_4_rad,
+                      float joint_5_rad,
+                      float joint_6_rad,
+                      float gripper_rad);
 
 private:
     static constexpr size_t TX_BUF_SIZE = 128U;

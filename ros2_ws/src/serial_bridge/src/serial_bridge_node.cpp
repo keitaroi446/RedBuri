@@ -406,12 +406,13 @@ private:
 
   void publishJointStates(const std::vector<float> & values)
   {
+    constexpr double kJointScale = 1000.0;
     sensor_msgs::msg::JointState msg{};
     msg.header.stamp = now();
     msg.name = joint_names_;
     msg.position.reserve(values.size());
     for (float value : values) {
-      msg.position.push_back(static_cast<double>(value));
+      msg.position.push_back(static_cast<double>(value) / kJointScale);
     }
     joint_state_pub_->publish(msg);
   }

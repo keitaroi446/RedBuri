@@ -2,6 +2,11 @@
 #include <cstdio>
 #include "uart_sender.hpp"
 
+namespace
+{
+constexpr float kRadScale = 1000.0f;
+}
+
 UartSender::UartSender(UART_HandleTypeDef& huart, TIM_HandleTypeDef& htim)
     : huart_(huart), htim_(htim)
 {}
@@ -16,13 +21,13 @@ void UartSender::onTimerTick()
     tick_pending_ = true;
 }
 
-void UartSender::sendJointDeg(int32_t joint_1_mrad,
-                              int32_t joint_2_mrad,
-                              int32_t joint_3_mrad,
-                              int32_t joint_4_mrad,
-                              int32_t joint_5_mrad,
-                              int32_t joint_6_mrad,
-                              int32_t gripper_mrad)
+void UartSender::sendJointDeg(float joint_1_rad,
+                              float joint_2_rad,
+                              float joint_3_rad,
+                              float joint_4_rad,
+                              float joint_5_rad,
+                              float joint_6_rad,
+                              float gripper_rad)
 {
     if(!tick_pending_)
     {
@@ -31,16 +36,24 @@ void UartSender::sendJointDeg(int32_t joint_1_mrad,
 
     tick_pending_ = false;
 
+    const int32_t joint_1_scaled = static_cast<int32_t>(joint_1_rad * kRadScale);
+    const int32_t joint_2_scaled = static_cast<int32_t>(joint_2_rad * kRadScale);
+    const int32_t joint_3_scaled = static_cast<int32_t>(joint_3_rad * kRadScale);
+    const int32_t joint_4_scaled = static_cast<int32_t>(joint_4_rad * kRadScale);
+    const int32_t joint_5_scaled = static_cast<int32_t>(joint_5_rad * kRadScale);
+    const int32_t joint_6_scaled = static_cast<int32_t>(joint_6_rad * kRadScale);
+    const int32_t gripper_scaled = static_cast<int32_t>(gripper_rad * kRadScale);
+
     const int written = std::snprintf(tx_buf_,
                                       TX_BUF_SIZE,
                                       "J,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
-                                      static_cast<long>(joint_1_mrad),
-                                      static_cast<long>(joint_2_mrad),
-                                      static_cast<long>(joint_3_mrad),
-                                      static_cast<long>(joint_4_mrad),
-                                      static_cast<long>(joint_5_mrad),
-                                      static_cast<long>(joint_6_mrad),
-                                      static_cast<long>(gripper_mrad));
+                                      static_cast<long>(joint_1_scaled),
+                                      static_cast<long>(joint_2_scaled),
+                                      static_cast<long>(joint_3_scaled),
+                                      static_cast<long>(joint_4_scaled),
+                                      static_cast<long>(joint_5_scaled),
+                                      static_cast<long>(joint_6_scaled),
+                                      static_cast<long>(gripper_scaled));
     if(written <= 0)
     {
         return;
