@@ -24,13 +24,13 @@ private:
     uint8_t rx_byte_{};
     char buf_[BUF_SIZE]{};
     uint8_t len_{};
-    int16_t base_motor_rpm_;
-    int16_t target_steer_deg_;
+    int16_t base_motor_rpm_{};
+    int16_t target_steer_deg_{};
     float current_steer_deg_{};
     float front_rpm_{};
     float rear_right_rpm_{};
     float rear_left_rpm_{};
-    int16_t arm_motor_rpm_[7];
+    int16_t arm_motor_rpm_[7]{};
 
     bool parseInt(const char*& p, int16_t& value);
     bool parseBaseCommand();

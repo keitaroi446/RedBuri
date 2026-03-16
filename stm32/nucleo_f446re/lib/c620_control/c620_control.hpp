@@ -10,8 +10,8 @@ public:
     explicit C620Control(C620CAN& can, TIM_HandleTypeDef& htim);
     void init();
     void setTargetSpeed(uint8_t motor_id, float target_rpm);
-    void updateSpeedControl();
-    void updateHoldControl();
+    void onTimerTick();
+    void updateMotorControl();
     void updateCurrentAngleDeg();
     bool getCurrentAngleDeg(uint8_t motor_id, float& current_angle_deg);
 
@@ -31,4 +31,8 @@ private:
     uint16_t prev_angle_raw_[MOTOR_COUNT]{};
     bool angle_initialized_[MOTOR_COUNT]{};
     float current_angle_deg_[MOTOR_COUNT]{};
+    volatile bool tick_pending_{false};
+
+    void updateSpeedControl();
+    void updateHoldControl();
 };

@@ -80,7 +80,7 @@ namespace run
         c620_control.setTargetSpeed(4, cmd.getArmMotorRpm(4));
         c620_control.setTargetSpeed(5, cmd.getArmMotorRpm(5));
         c620_control.setTargetSpeed(6, cmd.getArmMotorRpm(6));
-        
+        c620_control.updateMotorControl();
         float joint_1_rad = axis1.getCurrentDeg() * kPi / 180.0f;
         float joint_2_rad = axis2.getCurrentDeg() * kPi / 180.0f;
         float joint_3_rad = axis3.getCurrentDeg() * kPi / 180.0f;
@@ -88,7 +88,7 @@ namespace run
         float joint_5_deg{};
         float joint_6_deg{};
         float gripper_rad{};
-        
+
         c620_control.getCurrentAngleDeg(4, joint_4_deg);
         c620_control.getCurrentAngleDeg(5, joint_5_deg);
         c620_control.getCurrentAngleDeg(6, joint_6_deg);
