@@ -1,19 +1,16 @@
 #include <algorithm>
-#include <cstdint>
 #include <memory>
 #include <fstream>
 #include <filesystem>
 #include <string>
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
-#include "std_msgs/msg/u_int8.hpp"
 
 class JoyModeNode : public rclcpp::Node
 {
 public:
   JoyModeNode() : Node("joy_mode_node")
   {
-    const auto mode_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local();
     joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
       "/joy",
       10,
@@ -25,11 +22,9 @@ public:
     joy_base_pub_ = create_publisher<sensor_msgs::msg::Joy>("/joy_base", 10);
     joy_arm_joint_pub_ = create_publisher<sensor_msgs::msg::Joy>("/joy_arm_joint", 10);
     joy_arm_cartesian_pub_ = create_publisher<sensor_msgs::msg::Joy>("/joy_arm_cartesian", 10);
-    control_mode_pub_ = create_publisher<std_msgs::msg::UInt8>("/control_mode", mode_qos);
     
     detectLedPaths();
     setLedColor(0, 0, 255);
-    publishControlMode();
   }
 
 private:
@@ -45,7 +40,6 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::Joy>::SharedPtr joy_base_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Joy>::SharedPtr joy_arm_joint_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Joy>::SharedPtr joy_arm_cartesian_pub_;
-  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr control_mode_pub_;
 
   enum class ControlMode
   {
@@ -56,13 +50,6 @@ private:
   };
 
   ControlMode mode_{ControlMode::Disabled};
-
-  void publishControlMode()
-  {
-    std_msgs::msg::UInt8 msg{};
-    msg.data = static_cast<uint8_t>(mode_);
-    control_mode_pub_->publish(msg);
-  }
 
   bool detectLedPaths()
   {
@@ -164,25 +151,21 @@ private:
       {
         setLedColor(0, 0, 255);
         mode_ = ControlMode::Disabled;
-        publishControlMode();
       }
       else if(base_pressed && mode_ != ControlMode::Base)
       {
         setLedColor(255, 0, 0);
         mode_ = ControlMode::Base;
-        publishControlMode();
       }
       else if(arm_cartesian_pressed && mode_ != ControlMode::ArmCartesian)
       {
         setLedColor(0, 255, 0);
         mode_ = ControlMode::ArmCartesian;
-        publishControlMode();
       }
       else if(arm_joint_pressed && mode_ != ControlMode::ArmJoint) 
       {
         setLedColor(255, 0, 255);
         mode_ = ControlMode::ArmJoint;
-        publishControlMode();
       }
     }
 

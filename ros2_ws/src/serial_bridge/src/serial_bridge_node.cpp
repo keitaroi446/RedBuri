@@ -17,7 +17,6 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "std_msgs/msg/u_int8.hpp"
 
 class SerialBridgeNode : public rclcpp::Node
 {
@@ -28,15 +27,6 @@ public:
       "candidate_ports", std::vector<std::string>{"/dev/ttyUSB0"});
     tx_rate_hz_ = declare_parameter<double>("tx_rate_hz", 50.0);
     command_timeout_sec_ = declare_parameter<double>("command_timeout_sec", 0.2);
-    const auto control_mode_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local();
-
-    control_mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
-      "/control_mode",
-      control_mode_qos,
-      [this](const std_msgs::msg::UInt8::SharedPtr msg)
-      {
-        controlModeCallback(msg);
-      });
 
     base_sub_ = create_subscription<redburi_msgs::msg::BaseCommand>(
       "/base_cmd",
@@ -92,22 +82,16 @@ private:
   std::string active_port_{};
   double tx_rate_hz_{};
   double command_timeout_sec_{};
-  static constexpr uint8_t kModeDisabled = 0;
-  static constexpr uint8_t kModeBase = 1;
-  static constexpr uint8_t kModeArmCartesian = 2;
-  static constexpr uint8_t kModeArmJoint = 3;
 
   int serial_fd_{-1};
 
   bool has_base_{false};
   bool has_arm_{false};
-  uint8_t control_mode_{kModeDisabled};
   redburi_msgs::msg::BaseCommand latest_base_{};
   redburi_msgs::msg::ArmMotor latest_arm_{};
   rclcpp::Time last_base_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_arm_time_{0, 0, RCL_ROS_TIME};
 
-  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr control_mode_sub_;
   rclcpp::Subscription<redburi_msgs::msg::BaseCommand>::SharedPtr base_sub_;
   rclcpp::Subscription<redburi_msgs::msg::ArmMotor>::SharedPtr arm_sub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
@@ -132,86 +116,6 @@ private:
   static int safeInt(float v)
   {
     return static_cast<int>(std::lround(safeFloat(v)));
-  }
-
-  static uint8_t sanitizeControlMode(uint8_t mode)
-  {
-    switch (mode) {
-      case kModeDisabled:
-      case kModeBase:
-      case kModeArmCartesian:
-      case kModeArmJoint:
-        return mode;
-      default:
-        return kModeDisabled;
-    }
-  }
-
-  static bool isArmMode(uint8_t mode)
-  {
-    return mode == kModeArmCartesian || mode == kModeArmJoint;
-  }
-
-  static bool isBaseMode(uint8_t mode)
-  {
-    return mode == kModeBase;
-  }
-
-  std::string buildBaseLine(const redburi_msgs::msg::BaseCommand & base) const
-  {
-    std::ostringstream b;
-    b << "B,"
-      << safeInt(base.motor_rpm) << ","
-      << safeInt(base.target_steer_deg) << "\n";
-    return b.str();
-  }
-
-  std::string buildArmLine(const redburi_msgs::msg::ArmMotor & arm) const
-  {
-    std::ostringstream a;
-    a << "A,"
-      << safeInt(arm.joint_1_rpm) << ","
-      << safeInt(arm.joint_2_rpm) << ","
-      << safeInt(arm.joint_3_rpm) << ","
-      << safeInt(arm.joint_4_rpm) << ","
-      << safeInt(arm.joint_5_rpm) << ","
-      << safeInt(arm.joint_6_rpm) << ","
-      << safeInt(arm.gripper_rpm) << "\n";
-    return a.str();
-  }
-
-  void sendZeroFrame()
-  {
-    if (serial_fd_ < 0) {
-      openSerial();
-      if (serial_fd_ < 0) {
-        return;
-      }
-    }
-
-    sendLine(buildBaseLine(redburi_msgs::msg::BaseCommand{}));
-    sendLine(buildArmLine(redburi_msgs::msg::ArmMotor{}));
-  }
-
-  void controlModeCallback(const std_msgs::msg::UInt8::SharedPtr msg)
-  {
-    const uint8_t new_mode = sanitizeControlMode(msg->data);
-    if (new_mode == control_mode_) {
-      return;
-    }
-
-    const bool output_class_changed =
-      isArmMode(new_mode) != isArmMode(control_mode_) ||
-      isBaseMode(new_mode) != isBaseMode(control_mode_);
-
-    control_mode_ = new_mode;
-    if (output_class_changed) {
-      latest_base_ = redburi_msgs::msg::BaseCommand{};
-      latest_arm_ = redburi_msgs::msg::ArmMotor{};
-      has_base_ = false;
-      has_arm_ = false;
-      sendZeroFrame();
-    }
   }
 
   static bool parseCsvFloats(
@@ -370,33 +274,38 @@ private:
     const auto now_time = now();
     const auto timeout = rclcpp::Duration::from_seconds(command_timeout_sec_);
 
-    if (
-      control_mode_ == kModeBase &&
-      has_base_ &&
-      (now_time - last_base_time_) <= timeout)
-    {
+    if (has_base_ && (now_time - last_base_time_) <= timeout) {
       base = latest_base_;
     }
 
-    if (
-      (control_mode_ == kModeArmCartesian || control_mode_ == kModeArmJoint) &&
-      has_arm_ &&
-      (now_time - last_arm_time_) <= timeout)
-    {
+    if (has_arm_ && (now_time - last_arm_time_) <= timeout) {
       arm = latest_arm_;
     }
 
-    const std::string b = buildBaseLine(base);
-    const std::string a = buildArmLine(arm);
+    std::ostringstream b;
+    b << "B,"
+      << safeInt(base.motor_rpm) << ","
+      << safeInt(base.target_steer_deg) << "\n";
 
-    sendLine(b);
-    sendLine(a);
+    std::ostringstream a;
+    a << "A,"
+      << safeInt(arm.joint_1_rpm) << ","
+      << safeInt(arm.joint_2_rpm) << ","
+      << safeInt(arm.joint_3_rpm) << ","
+      << safeInt(arm.joint_4_rpm) << ","
+      << safeInt(arm.joint_5_rpm) << ","
+      << safeInt(arm.joint_6_rpm) << ","
+      << safeInt(arm.gripper_rpm) << "\n";
+
+    sendLine(b.str());
+    sendLine(a.str());
     RCLCPP_INFO_THROTTLE(
       get_logger(),
       *get_clock(),
       1000,
-      "tx %s",
-      b.c_str());
+      "tx %s tx %s",
+      b.str().c_str(),
+      a.str().c_str());
     pollRxLines();
   }
 

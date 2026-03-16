@@ -25,7 +25,7 @@ add_executable(joy_arm_cartesian_node src/joy_arm_cartesian_node.cpp)
 ament_target_dependencies(joy_arm_cartesian_node geometry_msgs rclcpp sensor_msgs std_msgs)
 
 add_executable(joy_mode_node src/joy_mode_node.cpp)
-ament_target_dependencies(joy_mode_node rclcpp sensor_msgs std_msgs)
+ament_target_dependencies(joy_mode_node rclcpp sensor_msgs)
 
 add_executable(servo_arm_motor_node src/servo_arm_motor_node.cpp)
 ament_target_dependencies(servo_arm_motor_node rclcpp redburi_msgs std_msgs trajectory_msgs)

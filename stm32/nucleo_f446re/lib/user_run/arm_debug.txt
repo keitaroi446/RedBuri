@@ -63,28 +63,24 @@ namespace run
         c620_can.init();
         c620_control.init();
         cmd.init();
-        HAL_Delay(1000);
         axis1.resetCurrentDeg(0.0f);
         axis2.resetCurrentDeg(0.0f);
         axis3.resetCurrentDeg(0.0f);
+        HAL_Delay(1000);
     }
 
     void loop()
     {
         static int8_t last_axis_signs[kAxisCount] = {0, 0, 0};
-
-        MotorCommandReceiver::ArmCommand arm_cmd{};
-        if(cmd.fetchArmCommand(arm_cmd))
-        {
-            applyStepAxisCommand(axis1, arm_cmd.motor_rpm[0], kStepAxisDirectionSigns[0], last_axis_signs[0]);
-            applyStepAxisCommand(axis2, arm_cmd.motor_rpm[1], kStepAxisDirectionSigns[1], last_axis_signs[1]);
-            applyStepAxisCommand(axis3, arm_cmd.motor_rpm[2], kStepAxisDirectionSigns[2], last_axis_signs[2]);
-            c620_control.setTargetSpeed(4, arm_cmd.motor_rpm[3]);
-            c620_control.setTargetSpeed(5, arm_cmd.motor_rpm[4]);
-            c620_control.setTargetSpeed(6, arm_cmd.motor_rpm[5]);
-            c620_can.sendCurrents();
-        }
-
+        
+        applyStepAxisCommand(axis1, cmd.getArmMotorRpm(1), kStepAxisDirectionSigns[0], last_axis_signs[0]);
+        applyStepAxisCommand(axis2, cmd.getArmMotorRpm(2), kStepAxisDirectionSigns[1], last_axis_signs[1]);
+        applyStepAxisCommand(axis3, cmd.getArmMotorRpm(3), kStepAxisDirectionSigns[2], last_axis_signs[2]);
+        
+        c620_control.setTargetSpeed(4, cmd.getArmMotorRpm(4));
+        c620_control.setTargetSpeed(5, cmd.getArmMotorRpm(5));
+        c620_control.setTargetSpeed(6, cmd.getArmMotorRpm(6));
+        
         float joint_1_rad = axis1.getCurrentDeg() * kPi / 180.0f;
         float joint_2_rad = axis2.getCurrentDeg() * kPi / 180.0f;
         float joint_3_rad = axis3.getCurrentDeg() * kPi / 180.0f;
@@ -92,14 +88,15 @@ namespace run
         float joint_5_deg{};
         float joint_6_deg{};
         float gripper_rad{};
+        
         c620_control.getCurrentAngleDeg(4, joint_4_deg);
         c620_control.getCurrentAngleDeg(5, joint_5_deg);
         c620_control.getCurrentAngleDeg(6, joint_6_deg);
-
+    
         float joint_4_rad = joint_4_deg * kPi / 180.0f;
         float joint_5_rad = joint_5_deg * kPi / 180.0f;
         float joint_6_rad = joint_6_deg * kPi / 180.0f;
-
+        
         printf("J,%f,%f,%f,%f,%f,%f,%f\n",
             joint_1_rad,
             joint_2_rad,
@@ -108,8 +105,6 @@ namespace run
             joint_5_rad,
             joint_6_rad,
             gripper_rad);
-        
-        HAL_Delay(50);
     }
 }
 

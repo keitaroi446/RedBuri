@@ -6,27 +6,15 @@
 class MotorCommandReceiver
 {
 public:
-    struct BaseCommand
-    {
-        int16_t motor_rpm;
-        int16_t steer_deg;
-    };
-
-    struct ArmCommand
-    {
-        int16_t motor_rpm[7];
-    };
-
     explicit MotorCommandReceiver(UART_HandleTypeDef& huart);
     void init();
     void callback();
     void setCurrentSteerDeg(float steer_deg);
-    bool fetchBaseCommand(BaseCommand& cmd);
-    bool fetchArmCommand(ArmCommand& cmd);
     float getFrontRpm() const;
     float getRearRightRpm() const;
     float getRearLeftRpm() const;
-    float getTargetSteerDeg() const;
+    int16_t getTargetSteerDeg() const;
+    int16_t getArmMotorRpm(uint8_t joint_num) const;
 
 private:
     static constexpr float WHEELBASE_M = 0.93053f;
@@ -36,17 +24,16 @@ private:
     uint8_t rx_byte_{};
     char buf_[BUF_SIZE]{};
     uint8_t len_{};
-    BaseCommand base_cmd_{};
-    ArmCommand arm_cmd_{};
-    bool base_ready_{false};
-    bool arm_ready_{false};
+    int16_t base_motor_rpm_;
+    int16_t target_steer_deg_;
     float current_steer_deg_{};
     float front_rpm_{};
     float rear_right_rpm_{};
     float rear_left_rpm_{};
+    int16_t arm_motor_rpm_[7];
 
-    bool parseBaseCommand(const char* line, BaseCommand& cmd);
-    bool parseArmCommand(const char* line, ArmCommand& cmd);
-    static bool parseInt(const char*& p, int16_t& value);
-    void recomputeBaseMotorRpm();
+    bool parseInt(const char*& p, int16_t& value);
+    bool parseBaseCommand();
+    bool parseArmCommand();
+    void computeBaseMotorRpm();
 };

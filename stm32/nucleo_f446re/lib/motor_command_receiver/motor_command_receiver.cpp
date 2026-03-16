@@ -25,23 +25,15 @@ void MotorCommandReceiver::callback()
     {
         buf_[len_] = '\0';
 
-        if(buf_[0] == 'B')
+        if(len_ > 0)
         {
-            BaseCommand cmd{};
-            if(parseBaseCommand(buf_, cmd))
+            if(buf_[0] == 'B')
             {
-                base_cmd_ = cmd;
-                base_ready_ = true;
-                recomputeBaseMotorRpm();
+                parseBaseCommand();
             }
-        }
-        else if(buf_[0] == 'A')
-        {
-            ArmCommand cmd{};
-            if(parseArmCommand(buf_, cmd))
+            else if(buf_[0] == 'A')
             {
-                arm_cmd_ = cmd;
-                arm_ready_ = true;
+                parseArmCommand();
             }
         }
 
@@ -52,8 +44,7 @@ void MotorCommandReceiver::callback()
 
     if(len_ < BUF_SIZE - 1)
     {
-        buf_[len_] = c;
-        len_++;
+        buf_[len_++] = c;
     }
     else
     {
@@ -66,31 +57,7 @@ void MotorCommandReceiver::callback()
 void MotorCommandReceiver::setCurrentSteerDeg(float steer_deg)
 {
     current_steer_deg_ = steer_deg;
-    recomputeBaseMotorRpm();
-}
-
-bool MotorCommandReceiver::fetchBaseCommand(BaseCommand& cmd)
-{
-    if(!base_ready_)
-    {
-        return false;
-    }
-
-    cmd = base_cmd_;
-    base_ready_ = false;
-    return true;
-}
-
-bool MotorCommandReceiver::fetchArmCommand(ArmCommand& cmd)
-{
-    if(!arm_ready_)
-    {
-        return false;
-    }
-
-    cmd = arm_cmd_;
-    arm_ready_ = false;
-    return true;
+    computeBaseMotorRpm();
 }
 
 float MotorCommandReceiver::getFrontRpm() const
@@ -108,89 +75,45 @@ float MotorCommandReceiver::getRearLeftRpm() const
     return rear_left_rpm_;
 }
 
-float MotorCommandReceiver::getTargetSteerDeg() const
+int16_t MotorCommandReceiver::getTargetSteerDeg() const
 {
-    return static_cast<float>(base_cmd_.steer_deg);
+    return target_steer_deg_;
 }
 
-bool MotorCommandReceiver::parseBaseCommand(const char* line, BaseCommand& cmd)
+int16_t MotorCommandReceiver::getArmMotorRpm(uint8_t joint_num) const
 {
-    const char* p = line;
+    return arm_motor_rpm_[joint_num - 1];
+}
 
-    if(*p != 'B')
-    {
-        return false;
-    }
-    p++;
+bool MotorCommandReceiver::parseBaseCommand()
+{
+    const char* p = buf_;
 
-    if(*p != ',')
-    {
-        return false;
-    }
-    p++;
+    if(*p++ != 'B') return false;
+    if(*p++ != ',') return false;
+    if(!parseInt(p, base_motor_rpm_)) return false;
+    if(*p++ != ',') return false;
+    if(!parseInt(p, target_steer_deg_)) return false;
+    if(*p != '\0') return false;
 
-    if(!parseInt(p, cmd.motor_rpm))
-    {
-        return false;
-    }
-
-    if(*p != ',')
-    {
-        return false;
-    }
-    p++;
-    
-    if(!parseInt(p, cmd.steer_deg))
-    {
-        return false;
-    }
-
-    if(*p != '\0')
-    {
-        return false;
-    }
-
+    computeBaseMotorRpm();
     return true;
 }
 
-bool MotorCommandReceiver::parseArmCommand(const char* line, ArmCommand& cmd)
+bool MotorCommandReceiver::parseArmCommand()
 {
-    const char* p = line;
+    const char* p = buf_;
 
-    if(*p != 'A')
+    if(*p++ != 'A') return false;
+    if(*p++ != ',') return false;
+
+    for(int i = 0; i < 7; ++i)
     {
-        return false;
-    }
-    p++;
-
-    if(*p != ',')
-    {
-        return false;
-    }
-    p++;
-
-    for(int i = 0; i < 7; i++)
-    {
-        if(!parseInt(p, cmd.motor_rpm[i]))
-        {
-            return false;
-        }
-
-        if(i < 6)
-        {
-            if(*p != ',')
-            {
-                return false;
-            }
-            p++;
-        }
+        if(!parseInt(p, arm_motor_rpm_[i])) return false;
+        if(i < 6 && *p++ != ',') return false;
     }
 
-    if(*p != '\0')
-    {
-        return false;
-    }
-
+    if(*p != '\0') return false;
     return true;
 }
 
@@ -225,17 +148,14 @@ bool MotorCommandReceiver::parseInt(const char*& p, int16_t& value)
     return true;
 }
 
-void MotorCommandReceiver::recomputeBaseMotorRpm()
+void MotorCommandReceiver::computeBaseMotorRpm()
 {
-    const float motor_rpm = static_cast<float>(base_cmd_.motor_rpm);
-    const float target_steer_deg = static_cast<float>(base_cmd_.steer_deg);
-
-    if(target_steer_deg == 90.0f)
+    if(target_steer_deg_ == 90.0f)
     {
         if(std::fabs(current_steer_deg_ - 90.0f) < 2.0f)
         {
-            front_rpm_ = motor_rpm;
-            rear_right_rpm_ = motor_rpm * (TREAD_M / 2.0f) / WHEELBASE_M;
+            front_rpm_ = base_motor_rpm_;
+            rear_right_rpm_ = base_motor_rpm_ * (TREAD_M / 2.0f) / WHEELBASE_M;
             rear_left_rpm_ = -rear_right_rpm_;
             return;
         }
@@ -256,7 +176,7 @@ void MotorCommandReceiver::recomputeBaseMotorRpm()
 
     if(std::fabs(current_steer_deg_) < 1.0f)
     {
-        front_rpm_ = motor_rpm;
+        front_rpm_ = base_motor_rpm_;
         rear_right_rpm_ = front_rpm_;
         rear_left_rpm_ = front_rpm_;
         return;
@@ -266,18 +186,18 @@ void MotorCommandReceiver::recomputeBaseMotorRpm()
     const float tan_steer = std::tan(steer_rad);
     const float R = std::fabs(WHEELBASE_M / tan_steer);
     const float half_tread = TREAD_M / 2.0f;
-    const float outer = motor_rpm * ((R + half_tread) / R);
-    const float inner = motor_rpm * ((R - half_tread) / R);
+    const float outer = base_motor_rpm_ * ((R + half_tread) / R);
+    const float inner = base_motor_rpm_ * ((R - half_tread) / R);
 
     if(current_steer_deg_ > 0.0f)
     {
-        front_rpm_ = motor_rpm;
+        front_rpm_ = base_motor_rpm_;
         rear_left_rpm_ = inner;
         rear_right_rpm_ = outer;
     }
     else
     {
-        front_rpm_ = motor_rpm;
+        front_rpm_ = base_motor_rpm_;
         rear_left_rpm_ = outer;
         rear_right_rpm_ = inner;
     }

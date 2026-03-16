@@ -25,12 +25,12 @@
   <xacro:property name="mount_pitch" value="0.349"/> <!-- ~20 deg -->
   <xacro:property name="mount_yaw" value="0.0"/>
 
-  <!-- joint mounting angles (rad, e.g. 1.047 ~= 60 deg) -->
+  <!-- joint mounting angles for a visually straight home pose in RViz -->
   <xacro:property name="joint_1_yaw" value="0.0"/> <!-- 0 deg -->
-  <xacro:property name="joint_2_pitch" value="1.221"/> <!-- ~70 deg -->
-  <xacro:property name="joint_3_pitch" value="1.221"/> <!-- ~70 deg -->
+  <xacro:property name="joint_2_pitch" value="0.0"/> <!-- 0 deg -->
+  <xacro:property name="joint_3_pitch" value="0.0"/> <!-- 0 deg -->
   <xacro:property name="joint_4_yaw" value="0.0"/> <!-- 0 deg -->
-  <xacro:property name="joint_5_pitch" value="1.221"/> <!-- ~70 deg -->
+  <xacro:property name="joint_5_pitch" value="0.0"/> <!-- 0 deg -->
   <xacro:property name="joint_6_yaw" value="0.0"/> <!-- 0 deg -->
 
   <!-- materials -->
@@ -183,7 +183,7 @@
     <child link="link_2"/>
     <origin xyz="0 0 ${link1_len}" rpy="0 0 ${joint_1_yaw}"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
   </joint>
 
   <!-- joint_2 : y -->
@@ -194,7 +194,7 @@
     <child link="link_3"/>
     <origin xyz="0 0 ${link2_len}" rpy="0 ${joint_2_pitch} 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
   </joint>
 
   <!-- joint_3 : y -->
@@ -205,7 +205,7 @@
     <child link="link_4"/>
     <origin xyz="0 0 ${link3_len}" rpy="0 ${joint_3_pitch} 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
   </joint>
 
   <!-- joint_4 : z -->
@@ -216,7 +216,7 @@
     <child link="link_5"/>
     <origin xyz="0 0 ${link4_len}" rpy="0 0 ${joint_4_yaw}"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
   </joint>
 
   <!-- joint_5 : y -->
@@ -227,7 +227,7 @@
     <child link="link_6"/>
     <origin xyz="0 0 ${link5_len}" rpy="0 ${joint_5_pitch} 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-2.7925" upper="0.0" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
   </joint>
 
   <!-- gripper -->
@@ -253,7 +253,7 @@
     <child link="gripper_link"/>
     <origin xyz="0 0 ${link6_len}" rpy="0 0 ${joint_6_yaw}"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1.3963" upper="1.3963" effort="1.0" velocity="1.0"/>
+    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
   </joint>
 
   <!-- tool0 -->
