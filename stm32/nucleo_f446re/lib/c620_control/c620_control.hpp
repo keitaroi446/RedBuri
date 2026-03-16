@@ -20,7 +20,7 @@ private:
     static constexpr uint16_t MAX_ANGLE_RAW = 8191;
     static constexpr uint16_t HOLD_DEADBAND_RAW = 5;
     static constexpr float MOTOR_GEAR_RATIO = 3591.0f / 187.0f;
-    static constexpr float KP_SPEED = 0.015f;
+    static constexpr float KP_SPEED = 0.02f;
     static constexpr float KP_HOLD = 0.8f;
 
     C620CAN& can_;

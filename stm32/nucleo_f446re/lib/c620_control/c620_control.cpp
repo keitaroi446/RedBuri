@@ -48,8 +48,8 @@ void C620Control::updateMotorControl()
     }
 
     tick_pending_ = false;
-    updateSpeedControl();
     updateHoldControl();
+    updateSpeedControl();
     can_.sendCurrents();
 }
 
