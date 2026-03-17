@@ -190,13 +190,13 @@ private:
       (1.0 - msg->axes[axis_gripper_open_]) / 2.0,
       input_max_x_,
       deadzone_x_,
-      max_linear_x_);
+      1.0);
 
     const double gripper_close = scaleAxis(
       (1.0 - msg->axes[axis_gripper_close_]) / 2.0,
       input_max_x_,
       deadzone_x_,
-      max_linear_x_);
+      1.0);
 
     gripper.data = static_cast<float>(applyGripperLimit(gripper_open - gripper_close));
     gripper_pub_->publish(gripper);  
