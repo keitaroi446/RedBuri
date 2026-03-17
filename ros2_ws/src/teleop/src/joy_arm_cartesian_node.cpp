@@ -39,9 +39,9 @@ public:
   }
 
 private:
-  int axis_x_{0};
-  int axis_y_{1};
-  int axis_z_{4};
+  int axis_x_{4};
+  int axis_y_{0};
+  int axis_z_{1};
   int axis_gripper_open_{5};
   int axis_gripper_close_{2};
   double deadzone_x_{};

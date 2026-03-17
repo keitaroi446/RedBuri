@@ -7,9 +7,9 @@ joy_arm_cartesian_node:
     input_max_x: 0.9
     input_max_y: 0.9
     input_max_z: 0.9
-    max_linear_x: 0.1
-    max_linear_y: 0.1
-    max_linear_z: 0.1
+    max_linear_x: 0.2
+    max_linear_y: 0.2
+    max_linear_z: 0.2
     servo_command_frame: link_6
     servo_twist_topic: /servo_node/delta_twist_cmds
     gripper_command_topic: /arm_gripper

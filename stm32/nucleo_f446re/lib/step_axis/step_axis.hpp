@@ -24,6 +24,10 @@ public:
     void moveToDeg(float target_deg);
     // Non-blocking start (returns false if already running)
     bool startMoveToDeg(float target_deg);
+    // Continuous rotation (non-blocking). Adjust speed with setStepFrequencyHz().
+    bool startContinuous(bool positive_direction);
+    void stopContinuous();
+    bool isContinuous() const { return continuous_; }
     // Reset "current angle" (open-loop). Use when motor power is applied or re-homed.
     void resetCurrentDeg(float deg = 0.0f);
     void onPulseFinished();
@@ -50,8 +54,12 @@ private:
     float step_deg_;
     uint32_t microstep_;
     float gear_ratio_;
+    float deg_per_pulse_;
     volatile uint32_t remaining_steps_;
     volatile bool running_;
+    volatile bool continuous_;
+    int8_t dir_sign_;
     float current_deg_;
     float target_deg_;
+    uint32_t step_hz_{};
 };

@@ -23,8 +23,11 @@ StepAxis::StepAxis(TIM_HandleTypeDef* timer,
       step_deg_(step_deg),
       microstep_(microstep),
       gear_ratio_(gear_ratio),
+      deg_per_pulse_(step_deg_ / (static_cast<float>(microstep_) * gear_ratio_)),
       remaining_steps_(0U),
       running_(false),
+      continuous_(false),
+      dir_sign_(1),
       current_deg_(0.0f),
       target_deg_(0.0f)
 {
@@ -50,6 +53,7 @@ void StepAxis::setStepFrequencyHz(uint32_t step_hz)
 {
     if (step_hz < 10U) step_hz = 10U;
     if (step_hz > 20000U) step_hz = 20000U;
+    if(step_hz_ == step_hz) return;
 
     uint32_t arr = (1000000U / step_hz);
     if (arr < 2U) arr = 2U;
@@ -58,6 +62,7 @@ void StepAxis::setStepFrequencyHz(uint32_t step_hz)
     __HAL_TIM_SET_AUTORELOAD(timer_, arr);
     __HAL_TIM_SET_COMPARE(timer_, channel_, (arr + 1U) / 2U);
     __HAL_TIM_SET_COUNTER(timer_, 0U);
+    step_hz_ = step_hz;
 }
 
 void StepAxis::moveToDeg(float target_deg)
@@ -70,7 +75,9 @@ void StepAxis::moveToDeg(float target_deg)
 bool StepAxis::startMoveToDeg(float target_deg)
 {
     if (running_) return false;
+    continuous_ = false;
     const float delta = target_deg - current_deg_;
+    dir_sign_ = (delta >= 0.0f) ? 1 : -1;
     const uint32_t steps = angleToSteps(delta);
     if (steps == 0U) {
         current_deg_ = target_deg;
@@ -95,6 +102,34 @@ bool StepAxis::startMoveToDeg(float target_deg)
     return true;
 }
 
+bool StepAxis::startContinuous(bool positive_direction)
+{
+    if (running_) return false;
+    continuous_ = true;
+    dir_sign_ = positive_direction ? 1 : -1;
+    const GPIO_PinState dir_state =
+        ((positive_direction && dir_positive_high_) || (!positive_direction && !dir_positive_high_))
+            ? GPIO_PIN_SET : GPIO_PIN_RESET;
+    HAL_GPIO_WritePin(dir_port_, dir_pin_, dir_state);
+
+    remaining_steps_ = 0U;
+    running_ = true;
+    if (HAL_TIM_PWM_Start_IT(timer_, channel_) != HAL_OK) {
+        running_ = false;
+        continuous_ = false;
+        return false;
+    }
+    return true;
+}
+
+void StepAxis::stopContinuous()
+{
+    if (!running_) return;
+    HAL_TIM_PWM_Stop_IT(timer_, channel_);
+    running_ = false;
+    continuous_ = false;
+}
+
 void StepAxis::resetCurrentDeg(float deg)
 {
     // If a move is in progress, stop it and reset state.
@@ -102,6 +137,7 @@ void StepAxis::resetCurrentDeg(float deg)
         HAL_TIM_PWM_Stop_IT(timer_, channel_);
         running_ = false;
         remaining_steps_ = 0U;
+        continuous_ = false;
     }
     current_deg_ = deg;
     target_deg_ = deg;
@@ -110,6 +146,10 @@ void StepAxis::resetCurrentDeg(float deg)
 void StepAxis::onPulseFinished()
 {
     if (!running_) return;
+    if (continuous_) {
+        current_deg_ += (static_cast<float>(dir_sign_) * deg_per_pulse_);
+        return;
+    }
     if (remaining_steps_ > 0U) {
         --remaining_steps_;
     }

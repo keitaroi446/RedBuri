@@ -4,8 +4,9 @@ import os
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, IncludeLaunchDescription, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from moveit_configs_utils import MoveItConfigsBuilder
 
@@ -18,6 +19,10 @@ def load_yaml(package_name, relative_path):
 
 
 def generate_launch_description():
+    joy_dev = LaunchConfiguration("joy_dev")
+    joy_deadzone = LaunchConfiguration("joy_deadzone")
+    joy_autorepeat_rate = LaunchConfiguration("joy_autorepeat_rate")
+
     moveit_config = MoveItConfigsBuilder(
         "redburi_arm", package_name="redburi_moveit"
     ).to_moveit_configs()
@@ -35,10 +40,15 @@ def generate_launch_description():
     teleop_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
-                get_package_share_directory("redburi_launch"), "launch", "teleop_sim.launch.py"
+                get_package_share_directory("redburi_launch"), "launch", "teleop.launch.py"
             )
         ),
-        launch_arguments={"arm_joint_output_mode": "joint_jog"}.items(),
+        launch_arguments={
+            "joy_dev": joy_dev,
+            "joy_deadzone": joy_deadzone,
+            "joy_autorepeat_rate": joy_autorepeat_rate,
+            "arm_joint_output_mode": "joint_jog",
+        }.items(),
     )
 
     robot_state_publisher_launch = IncludeLaunchDescription(
@@ -109,6 +119,9 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument("joy_dev", default_value="/dev/input/js0"),
+            DeclareLaunchArgument("joy_deadzone", default_value="0.1"),
+            DeclareLaunchArgument("joy_autorepeat_rate", default_value="60.0"),
             static_virtual_joint_tfs_launch,
             robot_state_publisher_launch,
             servo_node,

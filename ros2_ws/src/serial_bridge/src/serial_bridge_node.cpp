@@ -23,7 +23,8 @@ class SerialBridgeNode : public rclcpp::Node
 public:
   SerialBridgeNode() : Node("serial_bridge_node")
   {
-    port_ = declare_parameter<std::string>("port", "/dev/ttyUSB0");
+    candidate_ports_ = declare_parameter<std::vector<std::string>>(
+      "candidate_ports", std::vector<std::string>{"/dev/ttyUSB0"});
     tx_rate_hz_ = declare_parameter<double>("tx_rate_hz", 50.0);
     command_timeout_sec_ = declare_parameter<double>("command_timeout_sec", 0.2);
 
@@ -77,7 +78,8 @@ public:
   }
 
 private:
-  std::string port_{};
+  std::vector<std::string> candidate_ports_{};
+  std::string active_port_{};
   double tx_rate_hz_{};
   double command_timeout_sec_{};
 
@@ -97,14 +99,14 @@ private:
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr raw_rx_line_pub_;
   rclcpp::TimerBase::SharedPtr tx_timer_;
   std::string rx_line_buffer_{};
+  static constexpr size_t kArmJointCount = 6;
   const std::vector<std::string> joint_names_{
     "joint_1",
     "joint_2",
     "joint_3",
     "joint_4",
     "joint_5",
-    "joint_6",
-    "gripper_joint"};
+    "joint_6"};
 
   static float safeFloat(float v)
   {
@@ -150,20 +152,12 @@ private:
     return true;
   }
 
-  void openSerial()
+  bool configureSerialFd(int fd, const std::string & port_name)
   {
-    serial_fd_ = ::open(port_.c_str(), O_RDWR | O_NOCTTY);
-    if (serial_fd_ < 0) {
-      RCLCPP_ERROR(get_logger(), "open(%s) failed: %s", port_.c_str(), std::strerror(errno));
-      return;
-    }
-
     termios tty{};
-    if (tcgetattr(serial_fd_, &tty) != 0) {
-      RCLCPP_ERROR(get_logger(), "tcgetattr failed: %s", std::strerror(errno));
-      ::close(serial_fd_);
-      serial_fd_ = -1;
-      return;
+    if (tcgetattr(fd, &tty) != 0) {
+      RCLCPP_ERROR(get_logger(), "tcgetattr(%s) failed: %s", port_name.c_str(), std::strerror(errno));
+      return false;
     }
 
     cfmakeraw(&tty);
@@ -178,22 +172,60 @@ private:
     tty.c_cc[VMIN] = 0;
     tty.c_cc[VTIME] = 0;
 
-    if (tcsetattr(serial_fd_, TCSANOW, &tty) != 0) {
-      RCLCPP_ERROR(get_logger(), "tcsetattr failed: %s", std::strerror(errno));
-      ::close(serial_fd_);
-      serial_fd_ = -1;
-      return;
+    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+      RCLCPP_ERROR(get_logger(), "tcsetattr(%s) failed: %s", port_name.c_str(), std::strerror(errno));
+      return false;
     }
 
     int modem_bits = 0;
-    if (::ioctl(serial_fd_, TIOCMGET, &modem_bits) == 0) {
+    if (::ioctl(fd, TIOCMGET, &modem_bits) == 0) {
       modem_bits |= (TIOCM_DTR | TIOCM_RTS);
-      if (::ioctl(serial_fd_, TIOCMSET, &modem_bits) != 0) {
-        RCLCPP_WARN(get_logger(), "ioctl(TIOCMSET) failed: %s", std::strerror(errno));
+      if (::ioctl(fd, TIOCMSET, &modem_bits) != 0) {
+        RCLCPP_WARN(
+          get_logger(), "ioctl(TIOCMSET, %s) failed: %s", port_name.c_str(), std::strerror(errno));
       }
     } else {
-      RCLCPP_WARN(get_logger(), "ioctl(TIOCMGET) failed: %s", std::strerror(errno));
+      RCLCPP_WARN(
+        get_logger(), "ioctl(TIOCMGET, %s) failed: %s", port_name.c_str(), std::strerror(errno));
     }
+
+    return true;
+  }
+
+  void openSerial()
+  {
+    std::ostringstream error_stream;
+
+    for (const auto & candidate_port : candidate_ports_) {
+      if (candidate_port.empty()) {
+        continue;
+      }
+
+      const int fd = ::open(candidate_port.c_str(), O_RDWR | O_NOCTTY);
+      if (fd < 0) {
+        error_stream << "open(" << candidate_port << ") failed: " << std::strerror(errno) << "; ";
+        continue;
+      }
+
+      if (!configureSerialFd(fd, candidate_port)) {
+        ::close(fd);
+        continue;
+      }
+
+      serial_fd_ = fd;
+      active_port_ = candidate_port;
+      RCLCPP_INFO(get_logger(), "connected serial bridge on %s", active_port_.c_str());
+      return;
+    }
+
+    serial_fd_ = -1;
+    active_port_.clear();
+    RCLCPP_ERROR_THROTTLE(
+      get_logger(),
+      *get_clock(),
+      2000,
+      "failed to open any serial port candidate: %s",
+      error_stream.str().c_str());
   }
 
   void sendLine(const std::string & line)
@@ -213,6 +245,7 @@ private:
           get_logger(), *get_clock(), 2000, "serial write failed: %s", std::strerror(errno));
         ::close(serial_fd_);
         serial_fd_ = -1;
+        active_port_.clear();
         return;
       }
       if (ret == 0) {
@@ -220,6 +253,7 @@ private:
           get_logger(), *get_clock(), 2000, "serial write returned 0 bytes");
         ::close(serial_fd_);
         serial_fd_ = -1;
+        active_port_.clear();
         return;
       }
       total += static_cast<size_t>(ret);
@@ -243,6 +277,7 @@ private:
     if (has_base_ && (now_time - last_base_time_) <= timeout) {
       base = latest_base_;
     }
+
     if (has_arm_ && (now_time - last_arm_time_) <= timeout) {
       arm = latest_arm_;
     }
@@ -268,8 +303,9 @@ private:
       get_logger(),
       *get_clock(),
       1000,
-      "tx %s",
-      b.str().c_str());
+      "tx %s tx %s",
+      b.str().c_str(),
+      a.str().c_str());
     pollRxLines();
   }
 
@@ -321,6 +357,7 @@ private:
         get_logger(), *get_clock(), 2000, "serial read failed: %s", std::strerror(errno));
       ::close(serial_fd_);
       serial_fd_ = -1;
+      active_port_.clear();
       rx_line_buffer_.clear();
       break;
     }
@@ -339,10 +376,15 @@ private:
     std::vector<float> values{};
 
     if (line[0] == 'J') {
-      if (!parseCsvFloats(line, 'J', 7, values)) {
+      if (!parseCsvFloats(line, 'J', kArmJointCount, values) &&
+        !parseCsvFloats(line, 'J', kArmJointCount + 1, values))
+      {
         RCLCPP_WARN_THROTTLE(
           get_logger(), *get_clock(), 2000, "failed to parse J line: %s", line.c_str());
         return;
+      }
+      if (values.size() > kArmJointCount) {
+        values.resize(kArmJointCount);
       }
       publishJointStates(values);
       return;
@@ -364,12 +406,13 @@ private:
 
   void publishJointStates(const std::vector<float> & values)
   {
+    constexpr double kJointScale = 1000.0;
     sensor_msgs::msg::JointState msg{};
     msg.header.stamp = now();
     msg.name = joint_names_;
     msg.position.reserve(values.size());
     for (float value : values) {
-      msg.position.push_back(static_cast<double>(value));
+      msg.position.push_back(static_cast<double>(value) / kJointScale);
     }
     joint_state_pub_->publish(msg);
   }

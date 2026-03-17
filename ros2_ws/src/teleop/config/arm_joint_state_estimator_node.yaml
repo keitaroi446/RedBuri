@@ -1,0 +1,11 @@
+# Estimated joint states from ArmMotor RPM commands.
+arm_joint_state_estimator_node:
+  ros__parameters:
+    arm_command_topic: /arm_motor
+    joint_state_topic: /joint_states
+    frame_id: base_link
+    publish_rate_hz: 60.0
+    command_timeout_sec: 0.2
+    initial_positions: [0.0, -0.2, -0.2, 0.0, -0.2, 0.0]
+    joint_lower_limits: [-1.3963, -2.7925, -2.7925, -1.3963, -2.7925, -1.3963]
+    joint_upper_limits: [1.3963, 0.0, 0.0, 1.3963, 0.0, 1.3963]

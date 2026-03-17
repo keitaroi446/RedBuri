@@ -119,7 +119,6 @@ private:
     }
   }
 
-
   void joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
     const size_t max_button_idx = static_cast<size_t>(

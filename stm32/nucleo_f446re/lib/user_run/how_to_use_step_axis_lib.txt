@@ -1,0 +1,50 @@
+#include <cstdio>
+#include <cstdint>
+#include "c620_can.hpp"
+#include "c620_control.hpp"
+#include "sts3215.hpp"
+#include "step_axis.hpp"
+#include "motor_command_receiver.hpp"
+
+C620CAN c620_can(&hcan1);
+C620Control c620_control(c620_can, htim6);
+STS3215 servo1(&huart1, 2, GPIOA, GPIO_PIN_5);
+STS3215 servo2(&huart1, 1, GPIOA, GPIO_PIN_5);
+MotorCommandReceiver cmd(huart2);
+StepAxis axis1{&htim2, TIM_CHANNEL_1, GPIOB, GPIO_PIN_7, true, 1.8f, 8U, 15.0f}; // PUL=PA15, DIR=PB7
+StepAxis axis2{&htim3, TIM_CHANNEL_1, GPIOA, GPIO_PIN_4, true, 1.8f, 8U, 15.0f}; // PUL=PA6,  DIR=PA4
+StepAxis axis3{&htim4, TIM_CHANNEL_1, GPIOB, GPIO_PIN_4, true, 1.8f, 8U, 15.0f}; // PUL=PB6,  DIR=PB4
+StepAxis* const axes[] = {&axis1, &axis2, &axis3};
+constexpr size_t kAxisCount = sizeof(axes) / sizeof(axes[0]);
+
+namespace run
+{
+    void setup()
+    {
+        c620_can.init();
+        c620_control.init();
+        cmd.init();
+        HAL_Delay(1000);
+        axis1.resetCurrentDeg(0.0f);
+        axis2.resetCurrentDeg(0.0f);
+        axis3.resetCurrentDeg(0.0f);
+    }
+
+    void loop()
+    {   
+        float deg = axis1.getCurrentDeg();
+        axis1.startContinuous(false); //反転
+        axis1.setStepFrequencyHz(1200);//速度変更
+        printf("deg = %f\n", deg);
+    }
+}
+
+extern "C" void setup_c()
+{
+    run::setup();
+}
+
+extern "C" void loop_c()
+{
+    run::loop();
+}
