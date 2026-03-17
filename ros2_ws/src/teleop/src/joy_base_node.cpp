@@ -14,12 +14,10 @@ public:
     forward_input_max_ = declare_parameter<double>("forward_input_max");
     backward_input_max_ = declare_parameter<double>("backward_input_max");
     steer_input_max_ = declare_parameter<double>("steer_input_max");
-    spin_input_max_ = declare_parameter<double>("spin_input_max");
     deadzone_forward_ = declare_parameter<double>("deadzone_forward");
     deadzone_backward_ = declare_parameter<double>("deadzone_backward");
     deadzone_steer_ = declare_parameter<double>("deadzone_steer");
-    deadzone_spin_ = declare_parameter<double>("deadzone_spin");
-    max_spin_rpm_ = declare_parameter<double>("max_spin_rpm");
+    spin_rpm_ = declare_parameter<double>("spin_rpm");
     max_motor_rpm_ = declare_parameter<double>("max_motor_rpm");
     max_steer_deg_ = declare_parameter<double>("max_steer_deg");
 
@@ -46,16 +44,15 @@ private:
   int axis_forward_{5};
   int axis_backward_{2};
   int axis_steer_{0};
-  int axis_spin_{3};
+  int button_right_spin{5};
+  int button_left_spin{4};
   double forward_input_max_{};
   double backward_input_max_{};
   double steer_input_max_{};
-  double spin_input_max_{};
   double deadzone_forward_{};
   double deadzone_backward_{};
   double deadzone_steer_{};
-  double deadzone_spin_{};
-  double max_spin_rpm_{};
+  double spin_rpm_{};
   double max_motor_rpm_{};
   double max_steer_deg_{};
 
@@ -88,7 +85,8 @@ private:
     double backward{};
     double drive{};
     double steer{};
-    double spin{};
+    int right_spin{};
+    int left_spin{};
 
     if(control_mode_ != 1)
     {
@@ -96,10 +94,12 @@ private:
       return;
     }
 
-    const size_t max_idx = static_cast<size_t>(
-      std::max({axis_forward_, axis_backward_, axis_steer_, axis_spin_}));
+    const size_t max_axis_idx = static_cast<size_t>(
+      std::max({axis_forward_, axis_backward_, axis_steer_}));
+    const size_t max_button_idx = static_cast<size_t>(
+      std::max(button_right_spin, button_left_spin));
 
-    if(msg->axes.size() <= max_idx)
+    if(msg->axes.size() <= max_axis_idx || msg->buttons.size() <= max_button_idx)
     {
       base_pub_->publish(base);
       return;
@@ -115,23 +115,29 @@ private:
       backward_input_max_,
       deadzone_backward_,
       1.0);
+    drive = forward - backward;
+
     steer = scaleAxis(
       msg->axes[axis_steer_],
       steer_input_max_,
       deadzone_steer_,
       1.0);
-    spin = scaleAxis(
-      msg->axes[axis_spin_],
-      spin_input_max_,
-      deadzone_spin_,
-      1.0);
 
-    drive = forward - backward;
+    right_spin = msg->buttons[button_right_spin];
+    left_spin = msg->buttons[button_left_spin];
 
-    if(spin != 0)
+    if(right_spin != left_spin)
     {
-      base.target_steer_deg = 90.0;
-      base.motor_rpm = max_spin_rpm_ * spin;
+      if(right_spin != 0)
+      {
+        base.target_steer_deg = -90.0;
+        base.motor_rpm = spin_rpm_;
+      }
+      else
+      {
+        base.target_steer_deg = 90.0;
+        base.motor_rpm = spin_rpm_;
+      }
     }
     else if(drive != 0.0 || steer != 0.0)
     {

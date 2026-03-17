@@ -4,11 +4,9 @@ joy_base_node:
     forward_input_max: 0.9
     backward_input_max: 0.9
     steer_input_max: 0.9
-    spin_input_max: 0.9
     deadzone_forward: 0.1
     deadzone_backward: 0.1
     deadzone_steer: 0.1
-    deadzone_spin: 0.2
-    max_spin_rpm: 30.0
+    spin_rpm: 30.0
     max_motor_rpm: 30.0
     max_steer_deg: 30.0
