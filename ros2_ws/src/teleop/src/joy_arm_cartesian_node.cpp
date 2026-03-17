@@ -6,6 +6,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/int8.hpp"
+#include "std_msgs/msg/u_int8.hpp"
 
 class JoyArmCartesianNode : public rclcpp::Node
 {
@@ -21,29 +23,37 @@ public:
     max_linear_x_ = declare_parameter<double>("max_linear_x");
     max_linear_y_ = declare_parameter<double>("max_linear_y");
     max_linear_z_ = declare_parameter<double>("max_linear_z");
-    servo_command_frame_ = declare_parameter<std::string>("servo_command_frame", "base_mount");
-    servo_twist_topic_ = declare_parameter<std::string>(
-      "servo_twist_topic", "/servo_node/delta_twist_cmds");
-    gripper_command_topic_ = declare_parameter<std::string>("gripper_command_topic", "/arm_gripper");
 
     joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
-      "/joy_arm_cartesian",
+      "/joy",
       10,
       [this](sensor_msgs::msg::Joy::SharedPtr msg)
       {
         joyArmCartesianCallback(msg);
       }
     );
-    twist_pub_ = create_publisher<geometry_msgs::msg::TwistStamped>(servo_twist_topic_, 10);
-    gripper_pub_ = create_publisher<std_msgs::msg::Float32>(gripper_command_topic_, 10);
+    mode_sub_ = create_subscription<std_msgs::msg::UInt8>(
+      "/control_mode",
+      10,
+      [this](std_msgs::msg::UInt8::SharedPtr msg)
+      {
+        control_mode_ = msg->data;
+      }
+    );
+    twist_pub_ = create_publisher<geometry_msgs::msg::TwistStamped>("/servo_node/delta_twist_cmds", 10);
+    joint_6_pub_ = create_publisher<std_msgs::msg::Int8>("/arm_joint_6", 10);
+    gripper_pub_ = create_publisher<std_msgs::msg::Float32>("/arm_gripper", 10);
   }
 
 private:
+  static constexpr const char * SERVO_COMMAND_FRAME = "link_6";
   int axis_x_{4};
   int axis_y_{0};
   int axis_z_{1};
   int axis_gripper_open_{5};
   int axis_gripper_close_{2};
+  int button_joint_6_right_{5};
+  int button_joint_6_left_{4};
   double deadzone_x_{};
   double deadzone_y_{};
   double deadzone_z_{};
@@ -53,12 +63,12 @@ private:
   double max_linear_x_{};
   double max_linear_y_{};
   double max_linear_z_{};
-  std::string servo_command_frame_{};
-  std::string servo_twist_topic_{};
-  std::string gripper_command_topic_{};
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr mode_sub_;
   rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int8>::SharedPtr joint_6_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gripper_pub_;
+  uint8_t control_mode_{0};
 
   double scaleAxis(double input, double input_max, double deadzone, double max_linear) const
   {
@@ -80,21 +90,36 @@ private:
   void joyArmCartesianCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
     geometry_msgs::msg::TwistStamped twist{};
+    std_msgs::msg::Int8 joint_6{};
     std_msgs::msg::Float32 gripper{};
+
     const size_t max_axis_idx = static_cast<size_t>(
       std::max({axis_x_, axis_y_, axis_z_, axis_gripper_open_, axis_gripper_close_}));
+    const size_t max_button_idx = static_cast<size_t>(
+      std::max(button_joint_6_right_, button_joint_6_left_));
 
-    if(msg->axes.size() <= max_axis_idx)
+    if(control_mode_ != 2)
     {
       twist.header.stamp = now();
-      twist.header.frame_id = servo_command_frame_;
+      twist.header.frame_id = SERVO_COMMAND_FRAME;
       twist_pub_->publish(twist);
+      joint_6_pub_->publish(joint_6);
+      gripper_pub_->publish(gripper);
+      return;
+    }
+
+    if(msg->axes.size() <= max_axis_idx || msg->buttons.size() <= max_button_idx)
+    {
+      twist.header.stamp = now();
+      twist.header.frame_id = SERVO_COMMAND_FRAME;
+      twist_pub_->publish(twist);
+      joint_6_pub_->publish(joint_6);
       gripper_pub_->publish(gripper);
       return;
     }
 
     twist.header.stamp = now();
-    twist.header.frame_id = servo_command_frame_;
+    twist.header.frame_id = SERVO_COMMAND_FRAME;
     twist.twist.linear.x = -scaleAxis(
       msg->axes[axis_x_], input_max_x_, deadzone_x_, max_linear_x_);
     twist.twist.linear.y = scaleAxis(
@@ -103,6 +128,11 @@ private:
       msg->axes[axis_z_], input_max_z_, deadzone_z_, max_linear_z_);
 
     twist_pub_->publish(twist);
+
+    const int right = msg->buttons[button_joint_6_right_];
+    const int left = msg->buttons[button_joint_6_left_];
+    joint_6.data = static_cast<int8_t>(left - right);
+    joint_6_pub_->publish(joint_6);
 
     const double gripper_open = scaleAxis(
       (1.0 - msg->axes[axis_gripper_open_]) / 2.0,
@@ -117,7 +147,7 @@ private:
       max_linear_x_);
 
     gripper.data = gripper_open - gripper_close;
-    gripper_pub_->publish(gripper);
+    gripper_pub_->publish(gripper);  
   }
 };
 

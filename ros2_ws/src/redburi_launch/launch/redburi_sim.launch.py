@@ -31,6 +31,9 @@ def generate_launch_description():
     joy_arm_cartesian_param = PathJoinSubstitution(
         [teleop_share, "config", "joy_arm_cartesian_node.yaml"]
     )
+    servo_arm_motor_param = PathJoinSubstitution(
+        [teleop_share, "config", "servo_arm_motor_node.yaml"]
+    )
     arm_joint_state_estimator_param = PathJoinSubstitution(
         [teleop_share, "config", "arm_joint_state_estimator_node.yaml"]
     )
@@ -83,6 +86,7 @@ def generate_launch_description():
         executable="servo_arm_motor_node",
         name="servo_arm_motor_node",
         output="screen",
+        parameters=[servo_arm_motor_param],
     )
 
     rviz_node = Node(

@@ -10,6 +10,3 @@ joy_arm_cartesian_node:
     max_linear_x: 0.2
     max_linear_y: 0.2
     max_linear_z: 0.2
-    servo_command_frame: link_6
-    servo_twist_topic: /servo_node/delta_twist_cmds
-    gripper_command_topic: /arm_gripper

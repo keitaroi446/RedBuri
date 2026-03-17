@@ -4,7 +4,11 @@
 #include <filesystem>
 #include <string>
 #include "rclcpp/rclcpp.hpp"
+#include "redburi_msgs/msg/arm_command.hpp"
+#include "redburi_msgs/msg/base_command.hpp"
 #include "sensor_msgs/msg/joy.hpp"
+#include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/int8.hpp"
 #include "std_msgs/msg/u_int8.hpp"
 
 class JoyModeNode : public rclcpp::Node
@@ -21,6 +25,10 @@ public:
       }
     );
     mode_pub_ = create_publisher<std_msgs::msg::UInt8>("/control_mode", 10);
+    base_pub_ = create_publisher<redburi_msgs::msg::BaseCommand>("/base_cmd", 10);
+    arm_pub_ = create_publisher<redburi_msgs::msg::ArmCommand>("/arm_cmd", 10);
+    gripper_pub_ = create_publisher<std_msgs::msg::Float32>("/arm_gripper", 10);
+    joint_6_pub_ = create_publisher<std_msgs::msg::Int8>("/arm_joint_6", 10);
     
     detectLedPaths();
     setLedColor(0, 0, 255);
@@ -37,6 +45,10 @@ private:
   std::string led_blue_path_{};
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
   rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr mode_pub_;
+  rclcpp::Publisher<redburi_msgs::msg::BaseCommand>::SharedPtr base_pub_;
+  rclcpp::Publisher<redburi_msgs::msg::ArmCommand>::SharedPtr arm_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gripper_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int8>::SharedPtr joint_6_pub_;
 
   enum class ControlMode
   {
@@ -47,6 +59,14 @@ private:
   };
 
   ControlMode mode_{ControlMode::Disabled};
+
+  void publishStopCommands()
+  {
+    base_pub_->publish(redburi_msgs::msg::BaseCommand{});
+    arm_pub_->publish(redburi_msgs::msg::ArmCommand{});
+    gripper_pub_->publish(std_msgs::msg::Float32{});
+    joint_6_pub_->publish(std_msgs::msg::Int8{});
+  }
 
   bool detectLedPaths()
   {
@@ -148,21 +168,25 @@ private:
       {
         setLedColor(0, 0, 255);
         mode_ = ControlMode::Disabled;
+        publishStopCommands();
       }
       else if(base_pressed && mode_ != ControlMode::Base)
       {
         setLedColor(255, 0, 0);
         mode_ = ControlMode::Base;
+        publishStopCommands();
       }
       else if(arm_cartesian_pressed && mode_ != ControlMode::ArmCartesian)
       {
         setLedColor(0, 255, 0);
         mode_ = ControlMode::ArmCartesian;
+        publishStopCommands();
       }
       else if(arm_joint_pressed && mode_ != ControlMode::ArmJoint) 
       {
         setLedColor(255, 0, 255);
         mode_ = ControlMode::ArmJoint;
+        publishStopCommands();
       }
     }
 

@@ -6,6 +6,6 @@ arm_joint_state_estimator_node:
     frame_id: base_link
     publish_rate_hz: 60.0
     command_timeout_sec: 0.2
-    initial_positions: [0.0, -0.2, -0.2, 0.0, -0.2, 0.0]
-    joint_lower_limits: [-1.3963, -2.7925, -2.7925, -1.3963, -2.7925, -1.3963]
-    joint_upper_limits: [1.3963, 0.0, 0.0, 1.3963, 0.0, 1.3963]
+    initial_positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    joint_lower_limits: [-1.2217, -1.2217, -1.2217, -1.2217, -1.2217, -1.2217]
+    joint_upper_limits: [1.2217, 1.2217, 1.2217, 1.2217, 1.2217, 1.2217]

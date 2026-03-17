@@ -90,7 +90,6 @@ private:
 
     if(control_mode_ != 1)
     {
-      base_pub_->publish(base);
       return;
     }
 

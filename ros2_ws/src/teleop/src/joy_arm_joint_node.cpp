@@ -213,7 +213,6 @@ private:
     
     if(control_mode_ != 3)
     {
-      publishArmMotor(0.0);
       return;
     }
 
