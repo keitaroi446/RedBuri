@@ -14,12 +14,13 @@ find_package(sensor_msgs REQUIRED)
 find_package(redburi_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
+find_package(urdf REQUIRED)
 
 add_executable(joy_base_node src/joy_base_node.cpp)
 ament_target_dependencies(joy_base_node rclcpp sensor_msgs redburi_msgs)
 
 add_executable(joy_arm_joint_node src/joy_arm_joint_node.cpp)
-ament_target_dependencies(joy_arm_joint_node control_msgs rclcpp sensor_msgs redburi_msgs std_msgs)
+ament_target_dependencies(joy_arm_joint_node rclcpp sensor_msgs redburi_msgs std_msgs urdf)
 
 add_executable(joy_arm_cartesian_node src/joy_arm_cartesian_node.cpp)
 ament_target_dependencies(joy_arm_cartesian_node geometry_msgs rclcpp sensor_msgs std_msgs)

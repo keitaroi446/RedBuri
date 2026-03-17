@@ -3,12 +3,15 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <chrono>
 
-#include "control_msgs/msg/joint_jog.hpp"
+#include "rclcpp/parameter_client.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "redburi_msgs/msg/arm_motor.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "urdf/model.h"
 
 class JoyArmJointNode : public rclcpp::Node
 {
@@ -18,20 +21,10 @@ public:
     deadzone_drive_ = declare_parameter<double>("deadzone_drive");
     drive_input_max_ = declare_parameter<double>("drive_input_max");
     max_motor_rpm_ = declare_parameter<double>("max_motor_rpm");
-    output_mode_ = declare_parameter<std::string>("output_mode", "arm_motor");
-    arm_command_topic_ = declare_parameter<std::string>("arm_command_topic", "/arm_motor");
-    joint_command_topic_ = declare_parameter<std::string>(
-      "joint_command_topic", "/servo_node/delta_joint_cmds");
-    gripper_command_topic_ = declare_parameter<std::string>(
-      "gripper_command_topic", "/arm_gripper");
 
-    if (output_mode_ != "arm_motor" && output_mode_ != "joint_jog") {
-      RCLCPP_WARN(
-        get_logger(),
-        "unknown output_mode '%s', falling back to arm_motor",
-        output_mode_.c_str());
-      output_mode_ = "arm_motor";
-    }
+    joint_lower_limits_.fill(-1.2217);
+    joint_upper_limits_.fill(1.2217);
+    load_joint_limits_from_robot_description();
 
     joy_sub_ = create_subscription<sensor_msgs::msg::Joy>(
       "/joy_arm_joint",
@@ -41,32 +34,146 @@ public:
         joy_arm_joint_callback(msg);
       }
     );
-    arm_pub_ = create_publisher<redburi_msgs::msg::ArmMotor>(arm_command_topic_, 10);
-    joint_pub_ = create_publisher<control_msgs::msg::JointJog>(joint_command_topic_, 10);
-    gripper_pub_ = create_publisher<std_msgs::msg::Float32>(gripper_command_topic_, 10);
+    joint_state_sub_ = create_subscription<sensor_msgs::msg::JointState>(
+      "/joint_states",
+      10,
+      [this](sensor_msgs::msg::JointState::SharedPtr msg)
+      {
+        joint_state_callback(msg);
+      }
+    );
+    arm_pub_ = create_publisher<redburi_msgs::msg::ArmMotor>("/arm_motor", 10);
+    gripper_pub_ = create_publisher<std_msgs::msg::Float32>("/arm_gripper", 10);
   }
 
 private:
-  static constexpr double RPM_TO_RAD_PER_SEC = (2.0 * M_PI) / 60.0;
   static constexpr std::array<const char *, 6> JOINT_NAMES{
     "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"};
   const int next_button_{5};
   const int prev_button_{4};
-  const int axis_drive_{1};
+  const int axis_forward_{5};
+  const int axis_backward_{2};
   double deadzone_drive_{};
   double drive_input_max_{};
   double max_motor_rpm_{};
-  std::string output_mode_{};
-  std::string arm_command_topic_{};
-  std::string joint_command_topic_{};
-  std::string gripper_command_topic_{};
   int joint_num_{};
   bool was_next_button_pressed_{};
   bool was_prev_button_pressed_{};
+  std::array<double, JOINT_NAMES.size()> joint_lower_limits_{};
+  std::array<double, JOINT_NAMES.size()> joint_upper_limits_{};
+  std::array<double, JOINT_NAMES.size()> current_joint_positions_{};
+  std::array<bool, JOINT_NAMES.size()> has_joint_positions_{};
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
   rclcpp::Publisher<redburi_msgs::msg::ArmMotor>::SharedPtr arm_pub_;
-  rclcpp::Publisher<control_msgs::msg::JointJog>::SharedPtr joint_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr gripper_pub_;
+
+  double scale_axis(double input, double input_max, double deadzone) const
+  {
+    if (input_max == 0.0) {
+      return 0.0;
+    }
+
+    double normalized = std::clamp(input / input_max, -1.0, 1.0);
+    if (std::fabs(normalized) < deadzone) {
+      return 0.0;
+    }
+
+    return normalized;
+  }
+
+  void load_joint_limits_from_urdf(const std::string & robot_description)
+  {
+    if (robot_description.empty()) {
+      RCLCPP_WARN(
+        get_logger(),
+        "robot_description is empty, falling back to default joint limits");
+      return;
+    }
+
+    urdf::Model model;
+    if (!model.initString(robot_description)) {
+      RCLCPP_WARN(
+        get_logger(),
+        "failed to parse robot_description, falling back to default joint limits");
+      return;
+    }
+
+    for (size_t joint_idx = 0; joint_idx < JOINT_NAMES.size(); ++joint_idx) {
+      const auto joint = model.getJoint(JOINT_NAMES[joint_idx]);
+      if (!joint || !joint->limits) {
+        RCLCPP_WARN(
+          get_logger(),
+          "joint limit for %s not found in URDF, using default",
+          JOINT_NAMES[joint_idx]);
+        continue;
+      }
+
+      joint_lower_limits_[joint_idx] = joint->limits->lower;
+      joint_upper_limits_[joint_idx] = joint->limits->upper;
+    }
+  }
+
+  void load_joint_limits_from_robot_description()
+  {
+    auto param_client = std::make_shared<rclcpp::SyncParametersClient>(this, "robot_state_publisher");
+    if (!param_client->wait_for_service(std::chrono::seconds(2))) {
+      RCLCPP_WARN(
+        get_logger(),
+        "robot_state_publisher parameter service is unavailable, falling back to default joint limits");
+      return;
+    }
+
+    const auto robot_description =
+      param_client->get_parameter<std::string>("robot_description", "");
+    load_joint_limits_from_urdf(robot_description);
+  }
+
+  void joint_state_callback(sensor_msgs::msg::JointState::SharedPtr msg)
+  {
+    const size_t num_joints = std::min(msg->name.size(), msg->position.size());
+    for (size_t i = 0; i < num_joints; ++i) {
+      for (size_t joint_idx = 0; joint_idx < JOINT_NAMES.size(); ++joint_idx) {
+        if (msg->name[i] == JOINT_NAMES[joint_idx]) {
+          current_joint_positions_[joint_idx] = msg->position[i];
+          has_joint_positions_[joint_idx] = true;
+          break;
+        }
+      }
+    }
+  }
+
+  double apply_joint_limit(double motor_rpm)
+  {
+    if (joint_num_ < 0 || joint_num_ >= static_cast<int>(JOINT_NAMES.size()) || motor_rpm == 0.0) {
+      return motor_rpm;
+    }
+
+    const size_t joint_idx = static_cast<size_t>(joint_num_);
+    if (!has_joint_positions_[joint_idx]) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(),
+        *get_clock(),
+        2000,
+        "joint state for %s is unavailable, halting joint control for safety",
+        JOINT_NAMES[joint_idx]);
+      return 0.0;
+    }
+
+    const double lower_limit = joint_lower_limits_[joint_idx];
+    const double upper_limit = joint_upper_limits_[joint_idx];
+    const double current_position = current_joint_positions_[joint_idx];
+
+    if (motor_rpm > 0.0 && current_position >= upper_limit) {
+      return 0.0;
+    }
+
+    if (motor_rpm < 0.0 && current_position <= lower_limit) {
+      return 0.0;
+    }
+
+    return motor_rpm;
+  }
 
   void publishArmMotor(double motor_rpm)
   {
@@ -101,59 +208,29 @@ private:
     arm_pub_->publish(arm);
   }
 
-  void publishJointJog(double joint_velocity_rad_per_sec, double normalized_gripper_command)
-  {
-    control_msgs::msg::JointJog jog{};
-    std_msgs::msg::Float32 gripper{};
-
-    jog.header.stamp = now();
-
-    if (joint_num_ >= 0 && joint_num_ < static_cast<int>(JOINT_NAMES.size())) {
-      jog.joint_names.emplace_back(JOINT_NAMES[static_cast<size_t>(joint_num_)]);
-      jog.velocities.emplace_back(joint_velocity_rad_per_sec);
-    } else {
-      jog.joint_names.assign(JOINT_NAMES.begin(), JOINT_NAMES.end());
-      jog.velocities.assign(JOINT_NAMES.size(), 0.0);
-      gripper.data = static_cast<float>(normalized_gripper_command);
-    }
-
-    joint_pub_->publish(jog);
-    gripper_pub_->publish(gripper);
-  }
-
-  void publishJointJogHalt()
-  {
-    publishJointJog(0.0, 0.0);
-  }
-
   void joy_arm_joint_callback(sensor_msgs::msg::Joy::SharedPtr msg)
   {
     const size_t max_button_idx = static_cast<size_t>(
       std::max(next_button_, prev_button_));
-    const size_t axis_idx = static_cast<size_t>(axis_drive_);
+    const size_t max_axis_idx = static_cast<size_t>(std::max(axis_forward_, axis_backward_));
+    double forward{};
+    double backward{};
     double drive{};
 
-    if(msg->buttons.size() <= max_button_idx || msg->axes.size() <= axis_idx)
+    if(msg->buttons.size() <= max_button_idx || msg->axes.size() <= max_axis_idx)
     {
-      if (output_mode_ == "joint_jog") {
-        publishJointJogHalt();
-      } else {
-        publishArmMotor(0.0);
-      }
+      publishArmMotor(0.0);
       return;
     }
 
     const bool is_next_button_pressed = msg->buttons[next_button_];
     const bool is_prev_button_pressed = msg->buttons[prev_button_];
 
-    if(drive_input_max_ != 0)
-    {
-      drive = msg->axes[axis_drive_] / drive_input_max_;
-    }
+    forward = scale_axis((1.0 - msg->axes[axis_forward_]) / 2.0, drive_input_max_, deadzone_drive_);
+    backward = scale_axis((1.0 - msg->axes[axis_backward_]) / 2.0, drive_input_max_, deadzone_drive_);
+    drive = forward - backward;
 
-    drive = std::clamp(drive, -1.0, 1.0);
-    if(std::fabs(drive) < deadzone_drive_) drive = 0.0;
-    double motor_rpm = drive * max_motor_rpm_;
+    double motor_rpm = apply_joint_limit(drive * max_motor_rpm_);
 
     if(is_next_button_pressed && !was_next_button_pressed_)
     {
@@ -175,13 +252,6 @@ private:
 
     was_next_button_pressed_ = is_next_button_pressed;
     was_prev_button_pressed_ = is_prev_button_pressed;
-
-    if (output_mode_ == "joint_jog") {
-      const double joint_velocity_rad_per_sec = motor_rpm * RPM_TO_RAD_PER_SEC;
-      const double gripper_command = (joint_num_ == 6) ? drive : 0.0;
-      publishJointJog(joint_velocity_rad_per_sec, gripper_command);
-      return;
-    }
 
     publishArmMotor(motor_rpm);
   }

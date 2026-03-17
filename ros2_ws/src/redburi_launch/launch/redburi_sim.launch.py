@@ -23,7 +23,6 @@ def generate_launch_description():
     joy_dev = LaunchConfiguration("joy_dev")
     joy_deadzone = LaunchConfiguration("joy_deadzone")
     joy_autorepeat_rate = LaunchConfiguration("joy_autorepeat_rate")
-    arm_joint_output_mode = LaunchConfiguration("arm_joint_output_mode")
 
     teleop_share = FindPackageShare("teleop")
 
@@ -121,7 +120,6 @@ def generate_launch_description():
             DeclareLaunchArgument("joy_dev", default_value="/dev/input/js0"),
             DeclareLaunchArgument("joy_deadzone", default_value="0.1"),
             DeclareLaunchArgument("joy_autorepeat_rate", default_value="60.0"),
-            DeclareLaunchArgument("arm_joint_output_mode", default_value="joint_jog"),
             static_virtual_joint_tfs_launch,
             robot_state_publisher_launch,
             servo_node,
@@ -157,7 +155,7 @@ def generate_launch_description():
                 executable="joy_arm_joint_node",
                 name="joy_arm_joint_node",
                 output="screen",
-                parameters=[joy_arm_joint_param, {"output_mode": arm_joint_output_mode}],
+                parameters=[joy_arm_joint_param],
             ),
             Node(
                 package="teleop",
