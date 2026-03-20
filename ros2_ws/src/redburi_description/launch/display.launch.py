@@ -4,6 +4,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -13,7 +14,7 @@ def generate_launch_description():
         [FindPackageShare("redburi_description"), "urdf", "arm.urdf.xacro"]
     )
     robot_description = {
-        "robot_description": Command(["xacro ", xacro_path])
+        "robot_description": ParameterValue(Command(["xacro ", xacro_path]), value_type=str)
     }
 
     return LaunchDescription(

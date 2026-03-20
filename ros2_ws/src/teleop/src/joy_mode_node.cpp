@@ -178,8 +178,8 @@ private:
       }
       else if(arm_cartesian_pressed && mode_ != ControlMode::ArmCartesian)
       {
-        setLedColor(0, 255, 0);
-        mode_ = ControlMode::ArmCartesian;
+        setLedColor(0, 0, 255);
+        mode_ = ControlMode::Disabled;
         publishStopCommands();
       }
       else if(arm_joint_pressed && mode_ != ControlMode::ArmJoint) 

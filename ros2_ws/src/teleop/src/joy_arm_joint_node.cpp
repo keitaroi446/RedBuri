@@ -64,8 +64,9 @@ public:
 
 private:
   static constexpr double DEG_TO_RAD = 3.14159265358979323846 / 180.0;
-  static constexpr std::array<const char *, 6> JOINT_NAMES{
-    "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"};
+  static constexpr std::array<const char *, 4> JOINT_NAMES{
+    "joint_1", "joint_2", "joint_4", "joint_5"};
+  static constexpr int GRIPPER_INDEX = static_cast<int>(JOINT_NAMES.size());
   const int next_button_{5};
   const int prev_button_{4};
   const int axis_forward_{5};
@@ -166,7 +167,7 @@ private:
       return motor_rpm;
     }
 
-    if (joint_num_ == 6) {
+    if (joint_num_ == GRIPPER_INDEX) {
       if (!has_gripper_position_) {
         RCLCPP_WARN_THROTTLE(
           get_logger(),
@@ -229,18 +230,12 @@ private:
         arm_command.joint_2_rpm = motor_rpm;
         break;
       case 2:
-        arm_command.joint_3_rpm = motor_rpm;
-        break;
-      case 3:
         arm_command.joint_4_rpm = motor_rpm;
         break;
-      case 4:
+      case 3:
         arm_command.joint_5_rpm = motor_rpm;
         break;
-      case 5:
-        arm_command.joint_6_rpm = motor_rpm;
-        break;
-      case 6:
+      case 4:
         arm_command.gripper_rpm = motor_rpm;
         break;
       default:
@@ -282,7 +277,7 @@ private:
     if(is_next_button_pressed && !was_next_button_pressed_)
     {
       joint_num_++;
-      if(joint_num_ > 6)
+      if(joint_num_ > GRIPPER_INDEX)
       {
         joint_num_ = 0;
       }
@@ -293,7 +288,7 @@ private:
       joint_num_--;
       if(joint_num_ < 0)
       {
-        joint_num_ = 6;
+        joint_num_ = GRIPPER_INDEX;
       }
     }
 

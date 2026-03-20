@@ -187,23 +187,12 @@
   </joint>
 
   <!-- joint_2 : y -->
-  <xacro:arm_box_with_joint_y name="link_3" link_len="${link3_len}" material_name="gray"/>
+  <xacro:arm_box_with_joint_y name="link_4" link_len="${link4_len}" material_name="gray"/>
 
   <joint name="joint_2" type="revolute">
     <parent link="link_2"/>
-    <child link="link_3"/>
-    <origin xyz="0 0 ${link2_len}" rpy="0 ${joint_2_pitch} 0"/>
-    <axis xyz="0 1 0"/>
-    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
-  </joint>
-
-  <!-- joint_3 : y -->
-  <xacro:arm_box_with_joint_y name="link_4" link_len="${link4_len}" material_name="gray"/>
-
-  <joint name="joint_3" type="revolute">
-    <parent link="link_3"/>
     <child link="link_4"/>
-    <origin xyz="0 0 ${link3_len}" rpy="0 ${joint_3_pitch} 0"/>
+    <origin xyz="0 0 ${link2_len}" rpy="0 ${joint_2_pitch} 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
   </joint>
@@ -220,11 +209,9 @@
   </joint>
 
   <!-- joint_5 : y -->
-  <xacro:arm_box_with_joint_y name="link_6" link_len="${link6_len}" material_name="gray"/>
-
   <joint name="joint_5" type="revolute">
     <parent link="link_5"/>
-    <child link="link_6"/>
+    <child link="gripper_link"/>
     <origin xyz="0 0 ${link5_len}" rpy="0 ${joint_5_pitch} 0"/>
     <axis xyz="0 1 0"/>
     <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
@@ -247,14 +234,6 @@
       </geometry>
     </collision>
   </link>
-
-  <joint name="joint_6" type="revolute">
-    <parent link="link_6"/>
-    <child link="gripper_link"/>
-    <origin xyz="0 0 ${link6_len}" rpy="0 0 ${joint_6_yaw}"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="-1.2217" upper="1.2217" effort="1.0" velocity="1.0"/>
-  </joint>
 
   <!-- tool0 -->
   <link name="tool0">

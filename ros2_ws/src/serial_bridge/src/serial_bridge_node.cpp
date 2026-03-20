@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <chrono>
 #include <cmath>
@@ -101,13 +102,12 @@ private:
   std::string rx_line_buffer_{};
   static constexpr size_t kArmJointCount = 6;
   static constexpr size_t kJointStateCount = 7;
-  const std::vector<std::string> joint_names_{
+  static constexpr std::array<size_t, 4> kPublishedJointIndices{{0, 1, 3, 4}};
+  const std::array<std::string, kPublishedJointIndices.size()> joint_names_{
     "joint_1",
     "joint_2",
-    "joint_3",
     "joint_4",
-    "joint_5",
-    "joint_6"};
+    "joint_5"};
 
   static float safeFloat(float v)
   {
@@ -403,11 +403,13 @@ private:
     constexpr double kJointScale = 1000.0;
     sensor_msgs::msg::JointState msg{};
     msg.header.stamp = now();
-    const size_t joint_count = std::min(kArmJointCount, values.size());
-    msg.name.assign(joint_names_.begin(), joint_names_.begin() + joint_count);
-    msg.position.reserve(joint_count);
-    for (size_t i = 0; i < joint_count; ++i) {
-      const float value = values[i];
+    msg.name.assign(joint_names_.begin(), joint_names_.end());
+    msg.position.reserve(kPublishedJointIndices.size());
+    for (const size_t joint_idx : kPublishedJointIndices) {
+      if (joint_idx >= values.size()) {
+        return;
+      }
+      const float value = values[joint_idx];
       msg.position.push_back(static_cast<double>(value) / kJointScale);
     }
     joint_state_pub_->publish(msg);
